@@ -11,6 +11,7 @@ import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.IOException
+import kotlin.system.measureNanoTime
 import kotlin.system.measureTimeMillis
 
 /**
@@ -34,7 +35,7 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
     fun loadData() {
         val externalDir = getFile()
-        FilePreloader.preload(externalDir.absolutePath, ::FileMetadata)
+        FilePreloader.preloadFrom(externalDir.absolutePath, ::FileMetadata)
     }
 
     fun readData() {
@@ -42,14 +43,14 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         var metas: List<FileMetadata> = listOf()
         var str = ""
 
-        val time = measureTimeMillis {
-            metas = FilePreloader.load(externalDir.absolutePath, ::FileMetadata)
-        } / 1_000.0
+        val time = measureNanoTime {
+            metas = FilePreloader.loadFrom(externalDir.absolutePath, ::FileMetadata)
+        } / 1_000_000.0
 
-        metas.map { str += "\n${it.toString()}" }
-        text.text = "------------ FILES IN ${externalDir.absolutePath} ------------$str"
+        metas.map { str += "\n$it" }
+        textView.text = "------------ FILES IN ${externalDir.absolutePath} ------------$str"
 
-        timeView.text = "${time.toString()}s"
+        timeView.text = "${time}ms"
     }
 
     fun onLoadButtonClick(v: View) = loadData()
@@ -58,7 +59,8 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
     fun onCleanUpClick(v: View) {
         Processor.cleanUp()
-        text.text = ""
+        textView.text = ""
+        timeView.text = ""
     }
 
     fun checkPermission(): Boolean {
