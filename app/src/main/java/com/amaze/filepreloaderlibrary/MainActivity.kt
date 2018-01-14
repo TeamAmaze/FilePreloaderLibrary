@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         var str = ""
 
         val time = measureNanoTime {
-            metas = FilePreloader.loadFrom(externalDir.absolutePath, ::FileMetadata)
+            metas = FilePreloader.getAllDataLoaded(externalDir.absolutePath, ::FileMetadata)
         } / 1_000_000.0
 
         metas.map { str += "\n$it" }

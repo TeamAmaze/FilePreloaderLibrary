@@ -111,12 +111,13 @@ object Processor {
 
     /**
      * Gets the loaded files inside the folders (except '.') in the folder denoted by the [path].
+     * The parameter [clean] indicates if the data should be cleaned from the library's memory.
      *
      * @see workFrom to understand.
      */
-    fun getLoadedFrom(path: String): List<DataContainer>? {
-        val completeList = mutableListOf<DataContainer>()
-        PRELOADED_MAP.map { completeList.addAll(it.value) }
+    fun getLoadedFrom(path: String, clean: Boolean = true): List<DataContainer>? {
+        val completeList = PRELOADED_MAP[path]
+        if(clean) PRELOADED_MAP.clear()
         return completeList
     }
 
@@ -125,8 +126,23 @@ object Processor {
      *
      * @see work to understand.
      */
-    fun getLoaded(path: String): List<DataContainer>? {
-        return PRELOADED_MAP.get(path.removeRange(0, path.lastIndexOf(DIVIDER)))
+    fun getLoaded(path: String, clean: Boolean = true): List<DataContainer>? {
+        val completeList = PRELOADED_MAP[path.removeRange(0, path.lastIndexOf(DIVIDER))]
+        if(clean) PRELOADED_MAP.clear()
+        return completeList
+    }
+
+    /**
+     * *This function is only to test what data is being preloaded.*
+     * Gets all the loaded files inside the folders (except '.') in the folder denoted by the [path].
+     * The parameter [clean] indicates if the data should be cleaned from the library's memory.
+     *
+     * @see workFrom to understand.
+     */
+    fun getAllData(): List<DataContainer>? {
+        val completeList = mutableListOf<DataContainer>()
+        PRELOADED_MAP.map { completeList.addAll(it.value) }
+        return completeList
     }
 }
 
@@ -144,6 +160,7 @@ object Threader {
             PRELOAD_MAP.forEach {
                 val foldername = it.key
                 it.value.forEach{ executor?.submit(LoaderThread(foldername, it))}
+                //PRELOAD_MAP.remove(it.key) todo fix this, it causes a crash
             }
         }
     }
