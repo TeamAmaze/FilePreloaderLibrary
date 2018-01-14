@@ -1,5 +1,5 @@
 # File Preloader Library
-README made with [makeareadme](https://www.makeareadme.com/)
+README made with [makeareadme](https://www.makeareadme.com/).
 
 *Loading takes time,  
 Caching takes space,  
@@ -15,7 +15,7 @@ The aim of this library is to preload entire folders the user might access, so t
 ```gradle
 dependencies {
     ...
-    implements 'com.github.TeamAmaze:FilePreloaderLibrary:master-SNAPSHOT' //Folder preloading
+    implementation 'com.github.TeamAmaze:FilePreloaderLibrary:master-SNAPSHOT' //Folder preloading
 }
 ```
 
