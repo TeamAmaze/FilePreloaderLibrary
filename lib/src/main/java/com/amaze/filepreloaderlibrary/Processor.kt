@@ -1,8 +1,8 @@
 package com.amaze.filepreloaderlibrary
 
 import java.io.File
+import java.io.FileFilter
 import java.util.*
-import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -24,14 +24,13 @@ object Processor {
     fun workFrom(unit: ProcessUnit) {
         Thread {
             val file = File(unit.first)
-            file.listFiles()
-                    .filter { it.isDirectory }
+            file.listFiles(FileFilter { it.isDirectory })
                     .forEach {
                         for (path in it.list()) {
                             Processor.addToProcess(it.name, ProcessUnit(path, unit.second))
                         }
                     }
-            file.parentFile.listFiles().forEach {
+            file.parentFile.listFiles()?.forEach {
                 Processor.addToProcess(it.name, ProcessUnit(file.parent, unit.second))
             }
             Threader.work()
