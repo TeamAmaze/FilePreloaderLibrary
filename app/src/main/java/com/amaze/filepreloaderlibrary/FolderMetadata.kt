@@ -7,9 +7,21 @@ import java.io.File
  *                      on 10/1/2018, at 16:40.
  */
 class FileMetadata(path: String): DataContainer(path) {
-    val file = File(path)
+
+    private val name: String
+    private val filePath: String
+    private val extension: String
+    private val isDirectory: Boolean
+
+    init {
+        val file = File(path)
+        name = file.name
+        filePath = file.absolutePath
+        extension = file.extension
+        isDirectory = file.isDirectory
+    }
 
     override fun toString(): String {
-        return "'${file.name}': {'${file.absolutePath}', ${file.isDirectory}, *.${file.extension}}"
+        return "'$name': {'$filePath', $isDirectory, *.$extension}"
     }
 }
