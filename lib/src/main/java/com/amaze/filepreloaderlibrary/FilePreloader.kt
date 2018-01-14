@@ -7,24 +7,32 @@ import java.io.File
  *              on 10/1/2018, at 15:04.
  */
 
+/**
+ * Use this class to interact with the library.
+ */
 object FilePreloader {
 
     /**
-     * Preload every subfolder in this [path], the [instantiator] is used to create the [D]: DataContainer
-     * objects
+     * Asynchly preload every subfolder in this [path] (exept '.'),
+     * the [instantiator] is used to create the `[D]: DataContainer` objects.
      */
     fun <D: DataContainer>preloadFrom(path: String, instantiator: (String) -> D) {
         Processor.workFrom(ProcessUnit(path, instantiator))
     }
 
     /**
-     * Preload folder (denoted by its [path]), the [instantiator] is used to create the
-     * [D]: DataContainer objects
+     * Asynchly preload folder (denoted by its [path]),
+     * the [instantiator] is used to create the `[D]: DataContainer` objects
      */
     fun <D: DataContainer>preload(path: String, instatiator: (String) -> D) {
         Processor.work(ProcessUnit(path, instatiator))
     }
 
+    /**
+     * Get the loaded data, this will load the data in the current thread if it's not loaded.
+     *
+     * @see preloadFrom
+     */
     fun <D: DataContainer>loadFrom(path: String, instatiator: (String) -> D): List<D> {
         val preloaded = Processor.getLoadedFrom(path)
         if(preloaded != null && preloaded.isNotEmpty()) return preloaded as List<D>//todo fix
@@ -39,6 +47,11 @@ object FilePreloader {
         }
     }
 
+    /**
+     * Get the loaded data, this will load the data in the current thread if it's not loaded.
+     *
+     * @see preload
+     */
     fun <D: DataContainer>load(path: String, instatiator: (String) -> D): List<D> {
         val preloaded = Processor.getLoaded(path)
         return if(preloaded != null && preloaded.isNotEmpty()) preloaded as List<D>//todo fix
