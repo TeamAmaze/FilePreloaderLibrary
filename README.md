@@ -1,12 +1,68 @@
-# File Metadata Preloader Library
+# File Preloader Library
+README made with [makeareadme](https://www.makeareadme.com/)
 
+*Loading takes time,  
+Caching takes space,  
+Preloading takes neither!*
+
+The aim of this library is to preload entire folders the user might access, so that they load instantly should the user open them.
+
+## Installation
+
+### Requirements
+* [JitPack](https://jitpack.io/)
+
+```gradle
+dependencies {
+    ...
+    implements 'com.github.TeamAmaze:FilePreloaderLibrary:master-SNAPSHOT' //Folder preloading
+}
+```
+
+## Usage
+
+```kotlin
+fun preload(externalDir: File) =
+        FilePreloader.preloadFrom(externalDir.absolutePath, ::FileMetadata)
+
+fun load(): List<FileMetadata> =
+        FilePreloader.loadFrom(externalDir.absolutePath, ::FileMetadata)
+
+class FileMetadata(path: String): DataContainer(path) {
+    private val name: String
+    private val filePath: String
+    private val extension: String
+    private val isDirectory: Boolean
+
+    init {
+        val file = File(path)
+        name = file.name
+        filePath = file.absolutePath
+        extension = file.extension
+        isDirectory = file.isDirectory
+    }
+
+    override fun toString(): String {
+        return "'$name': {'$filePath', $isDirectory, *.$extension}"
+    }
+}
+```
+
+## Development
+
+Just import to Android Studio as normal!
+
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
 
 Authors
 ---
 - Emmanuel Messulam
 
-### License:
-
+License:
+---
     Copyright (C) 2018 Emmanuel Messulam <emmanuelbendavid@gmail.com>
     This file is part of Amaze File Manager.
     Amaze File Manager is free software: you can redistribute it and/or modify
