@@ -57,5 +57,23 @@ object FilePreloader {
         return if(preloaded != null && preloaded.isNotEmpty()) preloaded as List<D>//todo fix
         else File(path).list().map { instatiator.invoke(it) }
     }
+
+    /**
+     * *This function is only to test what data is being preloaded.*
+     * Get all the loaded data, this will load the data in the current thread if it's not loaded.
+     */
+    fun <D: DataContainer>getAllDataLoaded(path: String, instatiator: (String) -> D): List<D> {
+        val preloaded = Processor.getAllData()
+        if(preloaded != null && preloaded.isNotEmpty()) return preloaded as List<D>//todo fix
+        else {
+            val list = mutableListOf<D>()
+            val file = File(path)
+
+            file.listFiles().forEach { list.addAll(it.list().map(instatiator)) }
+            list.addAll(file.parentFile.list().map(instatiator))
+
+            return list
+        }
+    }
 }
 
