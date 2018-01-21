@@ -8,10 +8,10 @@ import java.io.File
  */
 class FileMetadata(path: String): DataContainer(path) {
 
-    private val name: String
-    private val filePath: String
-    private val extension: String
-    private val isDirectory: Boolean
+    val name: String
+    val filePath: String
+    val extension: String
+    val isDirectory: Boolean
 
     init {
         val file = File(path)

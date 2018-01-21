@@ -31,49 +31,27 @@ object FilePreloader {
     /**
      * Get the loaded data, this will load the data in the current thread if it's not loaded.
      *
-     * @see preloadFrom
-     */
-    fun <D: DataContainer>loadFrom(path: String, instatiator: (String) -> D): List<D> {
-        val preloaded = Processor.getLoadedFrom(path)
-        if(preloaded != null && preloaded.isNotEmpty()) return preloaded as List<D>//todo fix
-        else {
-            val list = mutableListOf<D>()
-            val file = File(path)
-
-            file.listFiles().forEach { list.addAll(it.list().map(instatiator)) }
-            list.addAll(file.parentFile.list().map(instatiator))
-
-            return list
-        }
-    }
-
-    /**
-     * Get the loaded data, this will load the data in the current thread if it's not loaded.
-     *
      * @see preload
      */
     fun <D: DataContainer>load(path: String, instatiator: (String) -> D): List<D> {
-        val preloaded = Processor.getLoaded(path)
-        return if(preloaded != null && preloaded.isNotEmpty()) preloaded as List<D>//todo fix
-        else File(path).list().map { instatiator.invoke(it) }
+        val t:Pair<Boolean, List<DataContainer>>? = Processor.getLoaded(path)
+
+        return if(t != null && t.first) t.second as List<D>
+        else {
+            var path = path
+            if(!path.endsWith(DIVIDER)) path += DIVIDER
+            File(path).list().map { instatiator.invoke(path + it) }
+        }
     }
 
     /**
      * *This function is only to test what data is being preloaded.*
      * Get all the loaded data, this will load the data in the current thread if it's not loaded.
      */
-    fun <D: DataContainer>getAllDataLoaded(path: String, instatiator: (String) -> D): List<D> {
+    fun <D: DataContainer>getAllDataLoaded(): List<D>? {
         val preloaded = Processor.getAllData()
         if(preloaded != null && preloaded.isNotEmpty()) return preloaded as List<D>//todo fix
-        else {
-            val list = mutableListOf<D>()
-            val file = File(path)
-
-            file.listFiles().forEach { list.addAll(it.list().map(instatiator)) }
-            list.addAll(file.parentFile.list().map(instatiator))
-
-            return list
-        }
+        else return null
     }
 }
 
