@@ -3,11 +3,6 @@ package com.amaze.filepreloaderlibrary
 import java.io.File
 
 /**
- * @author Emmanuel Messulam <emmanuelbendavid@gmail.com>
- *              on 10/1/2018, at 15:04.
- */
-
-/**
  * Use this class to interact with the library.
  */
 object FilePreloader {

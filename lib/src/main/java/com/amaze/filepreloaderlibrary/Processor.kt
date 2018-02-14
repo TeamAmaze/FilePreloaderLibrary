@@ -6,11 +6,6 @@ import java.io.FileFilter
 import java.util.*
 
 /**
- * @author Emmanuel Messulam <emmanuelbendavid@gmail.com>
- *                      on 10/1/2018, at 17:05.
- */
-
-/**
  * Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
  * This is done asynchly.
  *

@@ -15,10 +15,6 @@ import java.io.File
 import java.io.IOException
 import kotlin.system.measureNanoTime
 
-/**
- * @author Emmanuel Messulam <emmanuelbendavid@gmail.com>
- *              on 10/1/2018, at 15:04.
- */
 class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback,
         AdapterView.OnItemClickListener {
 
