@@ -1,9 +1,12 @@
 package com.amaze.filepreloaderlibrary
 
 import android.util.Log
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.launch
 import java.io.File
 import java.io.FileFilter
 import java.util.*
+import kotlin.concurrent.thread
 
 /**
  * Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
@@ -56,7 +59,7 @@ object Processor {
      * on each file (represented by its path) inside the folder.
      */
     fun workFrom(unit: ProcessUnit) {
-        Thread {
+        launch {
             synchronized(PRELOADED_MAP) {
                 val file = File(unit.first)
                 (file.listFiles(FileFilter { it.isDirectory }) as Array<File>?)
@@ -83,7 +86,7 @@ object Processor {
             }
 
             work()
-        }.start()
+        }
     }
 
     /**
@@ -93,7 +96,7 @@ object Processor {
      * on each file (represented by its path) inside the folder.
      */
     fun work(unit: ProcessUnit) {
-        Thread {
+        launch {
             synchronized(PRELOADED_MAP) {
                 val file = File(unit.first)
                 val fileList = file.list()
@@ -103,7 +106,7 @@ object Processor {
                 PRELOADED_MAP[file.path] = PreloadedFolder(fileList.size)
             }
             work()
-        }.start()
+        }
     }
 
     /**
