@@ -1,12 +1,12 @@
 package com.amaze.filepreloaderlibrary
 
 import android.util.Log
-import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.sync.Mutex
+import kotlinx.coroutines.experimental.sync.withLock
 import java.io.File
 import java.io.FileFilter
 import java.util.*
-import kotlin.concurrent.thread
 
 /**
  * Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
@@ -32,6 +32,7 @@ const val DIVIDER = "/"
  * on each file (represented by its path) inside the folder.
  */
 private val PRELOAD_LIST: MutableList<Loader> = Collections.synchronizedList(mutableListOf<Loader>())
+private val PRELOAD_LIST_MUTEX = Mutex()
 
 /**
  * Thread safe.
@@ -44,7 +45,7 @@ private val PRELOAD_LIST: MutableList<Loader> = Collections.synchronizedList(mut
  */
 private val PRELOADED_MAP: MutableMap<String, PreloadedFolder> =
         Collections.synchronizedMap(hashMapOf<String, PreloadedFolder>())
-
+private val PRELOADED_MAP_MUTEX = Mutex()
 /**
  * Singleton charged with writing to [PRELOAD_LIST] and starting the preload
  * and, afterwards reading from [PRELOADED_MAP] and returning the output.
@@ -60,21 +61,24 @@ object Processor {
      */
     fun workFrom(unit: ProcessUnit) {
         launch {
-            synchronized(PRELOADED_MAP) {
-                val file = File(unit.first)
-                (file.listFiles(FileFilter { it.isDirectory }) as Array<File>?)
-                        ?.forEach {
-                            if(PRELOADED_MAP[it.path] == null) {
-                                val subfiles = it.list()
-                                for (filename in subfiles) {
-                                    Processor.addToProcess(it.path, ProcessUnit(it.absolutePath + DIVIDER + filename, unit.second))
-                                }
-
-                                PRELOADED_MAP[it.path] = PreloadedFolder(subfiles.size)
-                            }
+            val file = File(unit.first)
+            (file.listFiles(FileFilter {
+                it.isDirectory
+            }) as Array<File>?)?.forEach {
+                PRELOADED_MAP_MUTEX.withLock {
+                    if (PRELOADED_MAP[it.path] == null) {
+                        val subfiles = it.list()
+                        for (filename in subfiles) {
+                            Processor.addToProcess(it.path, ProcessUnit(it.absolutePath + DIVIDER + filename, unit.second))
                         }
 
-                if(PRELOADED_MAP[file.parent] == null) {
+                        PRELOADED_MAP[it.path] = PreloadedFolder(subfiles.size)
+                    }
+                }
+            }
+
+            PRELOADED_MAP_MUTEX.withLock {
+                if (PRELOADED_MAP[file.parent] == null) {
                     val parentFileList: Array<File>? = file.parentFile.listFiles()
                     if (parentFileList != null && PRELOADED_MAP[file.parent] == null) {
                         parentFileList.forEach {
@@ -97,12 +101,16 @@ object Processor {
      */
     fun work(unit: ProcessUnit) {
         launch {
-            synchronized(PRELOADED_MAP) {
-                val file = File(unit.first)
-                val fileList = file.list()
+            val file = File(unit.first)
+            val fileList = file.list()
+
+            PRELOAD_LIST_MUTEX.withLock {
                 for (path in fileList) {
                     Processor.addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.second))
                 }
+            }
+
+            PRELOADED_MAP_MUTEX.withLock {
                 PRELOADED_MAP[file.path] = PreloadedFolder(fileList.size)
             }
             work()
@@ -129,8 +137,8 @@ object Processor {
      *
      * @see work to understand.
      */
-    fun getLoaded(path: String): Pair<Boolean, List<DataContainer>>? {
-        synchronized(PRELOADED_MAP) {
+    suspend fun getLoaded(path: String): Pair<Boolean, List<DataContainer>>? {
+        PRELOADED_MAP_MUTEX.withLock {
             val completeSet = PRELOADED_MAP[path]
             if (completeSet == null) return null
             else return completeSet.isComplete() to completeSet.toList()
@@ -144,8 +152,8 @@ object Processor {
      *
      * @see workFrom to understand.
      */
-    fun getAllData(): List<DataContainer>? {
-        synchronized(PRELOADED_MAP) {
+    suspend fun getAllData(): List<DataContainer>? {
+        PRELOADED_MAP_MUTEX.withLock {
             val completeList = mutableListOf<DataContainer>()
             PRELOADED_MAP.map { completeList.addAll(it.value) }
             return completeList
@@ -157,12 +165,10 @@ object Processor {
  * NEVER CALL ON MAIN THREAD
  * Loads every element in PRELOAD_LIST
  */
-fun work() {
-    synchronized(PRELOAD_LIST) {
+suspend fun work() {
+    PRELOAD_LIST_MUTEX.withLock {
         PRELOAD_LIST.forEach {
             val (path, data) = it.load()
-
-            Log.d("Threader", "Done: ($path, $data)")
             PRELOADED_MAP[path]!!.add(data)
         }
     }

@@ -1,5 +1,6 @@
 package com.amaze.filepreloaderlibrary
 
+import kotlinx.coroutines.experimental.runBlocking
 import java.io.File
 
 /**
@@ -28,14 +29,16 @@ object FilePreloader {
      *
      * @see preload
      */
-    fun <D: DataContainer>load(path: String, instatiator: (String) -> D): List<D> {
-        val t:Pair<Boolean, List<DataContainer>>? = Processor.getLoaded(path)
+    fun <D: DataContainer>load(path: String, instatiator: (String) -> D, getList: (List<D>) -> Unit) {
+        runBlocking {
+            val t: Pair<Boolean, List<DataContainer>>? = Processor.getLoaded(path)
 
-        return if(t != null && t.first) t.second as List<D>
-        else {
-            var path = path
-            if(!path.endsWith(DIVIDER)) path += DIVIDER
-            File(path).list().map { instatiator.invoke(path + it) }
+            if (t != null && t.first) getList(t.second as List<D>)
+            else {
+                var path = path
+                if (!path.endsWith(DIVIDER)) path += DIVIDER
+                getList(File(path).list().map { instatiator.invoke(path + it) })
+            }
         }
     }
 
@@ -43,10 +46,13 @@ object FilePreloader {
      * *This function is only to test what data is being preloaded.*
      * Get all the loaded data, this will load the data in the current thread if it's not loaded.
      */
-    fun <D: DataContainer>getAllDataLoaded(): List<D>? {
-        val preloaded = Processor.getAllData()
-        if(preloaded != null && preloaded.isNotEmpty()) return preloaded as List<D>//todo fix
-        else return null
+    fun <D: DataContainer>getAllDataLoaded(getList: (List<D>?) -> Unit) {
+        runBlocking {
+            val preloaded = Processor.getAllData()
+
+            if (preloaded != null && preloaded.isNotEmpty()) getList(preloaded as List<D>)//todo fix
+            else getList(null)
+        }
     }
 }
 

@@ -47,7 +47,11 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         val externalDir = File(path)
         val fileList = mutableListOf<String>()
         lateinit var metas: List<FileMetadata>
-        val time = measureNanoTime { metas = FilePreloader.load(path, ::FileMetadata) } / 1_000_000.0
+        val time = measureNanoTime {
+            FilePreloader.load(path, ::FileMetadata) {
+                metas = it
+            }
+        } / 1_000_000.0
 
         currentPath = externalDir.absolutePath
 
@@ -80,7 +84,9 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         var metas: List<FileMetadata>? = null
 
         val time = measureNanoTime {
-            metas = FilePreloader.getAllDataLoaded()
+            FilePreloader.getAllDataLoaded<FileMetadata> {
+                metas = it
+            }
         } / 1_000_000.0
 
         adapter.clear()
