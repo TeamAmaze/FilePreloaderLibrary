@@ -1,16 +1,9 @@
 package com.amaze.filepreloaderlibrary
 
+import android.util.Log
 import java.io.File
 import java.io.FileFilter
 import java.util.*
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
-
-/**
- * @author Emmanuel Messulam <emmanuelbendavid@gmail.com>
- *                      on 10/1/2018, at 17:05.
- */
 
 /**
  * Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
@@ -21,18 +14,21 @@ import java.util.concurrent.TimeUnit
  */
 typealias ProcessUnit = Pair<String, (String) -> DataContainer>
 
-val DIVIDER = "/"
+/**
+ * Contains the data (`[ProcessedUnit].second`) for a file inside the path `[ProcessedUnit].first`
+ */
+typealias ProcessedUnit = Pair<String, DataContainer>
+
+const val DIVIDER = "/"
 
 /**
  * Thread safe.
- * Maps each folder to a list of [ProcessUnit] to preload. The first folder is passed
- * in [Processor.workFrom] or [Processor.work] to get the result of the load folder operation.
+ * All the callable executions to load all the folders.
  *
  * 'Load a folder' means that the function `[unit].second` will be called
  * on each file (represented by its path) inside the folder.
  */
-private val PRELOAD_MAP: MutableMap<String, MutableList<ProcessUnit>> =
-        Collections.synchronizedMap(hashMapOf<String, MutableList<ProcessUnit>>())
+private val PRELOAD_LIST: MutableList<Loader> = Collections.synchronizedList(mutableListOf<Loader>())
 
 /**
  * Thread safe.
@@ -43,11 +39,11 @@ private val PRELOAD_MAP: MutableMap<String, MutableList<ProcessUnit>> =
  * 'Load a folder' means that the function `[unit].second` will be called
  * on each file (represented by its path) inside the folder.
  */
-private val PRELOADED_MAP: MutableMap<String, MutableList<DataContainer>> =
-        Collections.synchronizedMap(hashMapOf<String, MutableList<DataContainer>>())
+private val PRELOADED_MAP: MutableMap<String, PreloadedFolder> =
+        Collections.synchronizedMap(hashMapOf<String, PreloadedFolder>())
 
 /**
- * Singleton charged with writing to [PRELOAD_MAP] and starting the preload
+ * Singleton charged with writing to [PRELOAD_LIST] and starting the preload
  * and, afterwards reading from [PRELOADED_MAP] and returning the output.
  */
 object Processor {
@@ -61,17 +57,32 @@ object Processor {
      */
     fun workFrom(unit: ProcessUnit) {
         Thread {
-            val file = File(unit.first)
-            file.listFiles(FileFilter { it.isDirectory })
-                    .forEach {
-                        for (path in it.list()) {
-                            Processor.addToProcess(it.name, ProcessUnit(path, unit.second))
+            synchronized(PRELOADED_MAP) {
+                val file = File(unit.first)
+                (file.listFiles(FileFilter { it.isDirectory }) as Array<File>?)
+                        ?.forEach {
+                            if(PRELOADED_MAP[it.path] == null) {
+                                val subfiles = it.list()
+                                for (filename in subfiles) {
+                                    Processor.addToProcess(it.path, ProcessUnit(it.absolutePath + DIVIDER + filename, unit.second))
+                                }
+
+                                PRELOADED_MAP[it.path] = PreloadedFolder(subfiles.size)
+                            }
                         }
+
+                if(PRELOADED_MAP[file.parent] == null) {
+                    val parentFileList: Array<File>? = file.parentFile.listFiles()
+                    if (parentFileList != null && PRELOADED_MAP[file.parent] == null) {
+                        parentFileList.forEach {
+                            Processor.addToProcess(file.parent, ProcessUnit(it.path, unit.second))
+                        }
+                        PRELOADED_MAP[file.parent] = PreloadedFolder(parentFileList.size)
                     }
-            file.parentFile.listFiles()?.forEach {
-                Processor.addToProcess(it.name, ProcessUnit(file.parent, unit.second))
+                }
             }
-            Threader.work()
+
+            work()
         }.start()
     }
 
@@ -83,11 +94,15 @@ object Processor {
      */
     fun work(unit: ProcessUnit) {
         Thread {
-            val file = File(unit.first)
-            for (path in file.list()) {
-                Processor.addToProcess(file.name, ProcessUnit(path, unit.second))
+            synchronized(PRELOADED_MAP) {
+                val file = File(unit.first)
+                val fileList = file.list()
+                for (path in fileList) {
+                    Processor.addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.second))
+                }
+                PRELOADED_MAP[file.path] = PreloadedFolder(fileList.size)
             }
-            Threader.work()
+            work()
         }.start()
     }
 
@@ -95,30 +110,15 @@ object Processor {
      * Clear everything, all data loaded will be discarded.
      */
     fun cleanUp() {
-        PRELOAD_MAP.clear()
+        PRELOAD_LIST.clear()
         PRELOADED_MAP.clear()
     }
 
     /**
-     * Add file (represented by [unit]) to the [PRELOAD_MAP] to be preloaded by [Threader].
+     * Add file (represented by [unit]) to the [PRELOAD_LIST] to be preloaded by [Threader].
      */
-    private fun addToProcess(foldername: String, unit: ProcessUnit) {
-        val list = PRELOAD_MAP.get(foldername)
-
-        if(list == null) PRELOAD_MAP.put(foldername, mutableListOf(unit))
-        else list.add(unit)
-    }
-
-    /**
-     * Gets the loaded files inside the folders (except '.') in the folder denoted by the [path].
-     * The parameter [clean] indicates if the data should be cleaned from the library's memory.
-     *
-     * @see workFrom to understand.
-     */
-    fun getLoadedFrom(path: String, clean: Boolean = true): List<DataContainer>? {
-        val completeList = PRELOADED_MAP[path]
-        if(clean) PRELOADED_MAP.clear()
-        return completeList
+    private fun addToProcess(path: String, unit: ProcessUnit) {
+        PRELOAD_LIST.add(Loader(path, unit))
     }
 
     /**
@@ -126,10 +126,12 @@ object Processor {
      *
      * @see work to understand.
      */
-    fun getLoaded(path: String, clean: Boolean = true): List<DataContainer>? {
-        val completeList = PRELOADED_MAP[path.removeRange(0, path.lastIndexOf(DIVIDER))]
-        if(clean) PRELOADED_MAP.clear()
-        return completeList
+    fun getLoaded(path: String): Pair<Boolean, List<DataContainer>>? {
+        synchronized(PRELOADED_MAP) {
+            val completeSet = PRELOADED_MAP[path]
+            if (completeSet == null) return null
+            else return completeSet.isComplete() to completeSet.toList()
+        }
     }
 
     /**
@@ -140,51 +142,35 @@ object Processor {
      * @see workFrom to understand.
      */
     fun getAllData(): List<DataContainer>? {
-        val completeList = mutableListOf<DataContainer>()
-        PRELOADED_MAP.map { completeList.addAll(it.value) }
-        return completeList
-    }
-}
-
-/**
- * Singleton in charge of creating and loading [LoaderThread] instances to the [LoaderThreadPool]
- * to be executed.
- */
-object Threader {
-    var executor:ThreadPoolExecutor? = null
-
-    fun work() {
-        synchronized(PRELOAD_MAP) {
-            executor = LoaderThreadPool()
-            executor!!.prestartAllCoreThreads()
-            PRELOAD_MAP.forEach {
-                val foldername = it.key
-                it.value.forEach{ executor?.submit(LoaderThread(foldername, it))}
-                //PRELOAD_MAP.remove(it.key) todo fix this, it causes a crash
-            }
+        synchronized(PRELOADED_MAP) {
+            val completeList = mutableListOf<DataContainer>()
+            PRELOADED_MAP.map { completeList.addAll(it.value) }
+            return completeList
         }
     }
 }
 
-val MAX_THREADS = 10
-val KEEP_ALIVE_TIME = 5L
-
 /**
- * The thread pool, each thread is a [LoaderThread].
+ * NEVER CALL ON MAIN THREAD
+ * Loads every element in PRELOAD_LIST
  */
-class LoaderThreadPool() : ThreadPoolExecutor(MAX_THREADS, MAX_THREADS, KEEP_ALIVE_TIME,
-        TimeUnit.SECONDS, LinkedBlockingQueue<Runnable>())
+fun work() {
+    synchronized(PRELOAD_LIST) {
+        PRELOAD_LIST.forEach {
+            val (path, data) = it.load()
+
+            Log.d("Threader", "Done: ($path, $data)")
+            PRELOADED_MAP[path]!!.add(data)
+        }
+    }
+}
 
 /**
- * Each [LoaderThread] contains en element whose metadata it will get.
+ * Each [Loader] contains en element whose metadata it will get.
  * Basically runs `[unit].second.invoke([unit].first)` and saves the result.
  */
-class LoaderThread(private val foldername:String, private val unit:ProcessUnit): Runnable {
-    override fun run() {
-        val list:MutableList<DataContainer>? = PRELOADED_MAP.get(foldername)
-        val data = unit.second.invoke(unit.first)
-
-        if(list == null) PRELOADED_MAP.put(foldername, mutableListOf(data))
-        else list.add(data)
+class Loader(private val path:String, private val unit:ProcessUnit) {
+    fun load(): ProcessedUnit {
+        return ProcessedUnit(path, unit.second.invoke(unit.first))
     }
 }
