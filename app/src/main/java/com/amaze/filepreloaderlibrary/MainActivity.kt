@@ -13,7 +13,6 @@ import android.widget.ArrayAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.IOException
-import kotlin.system.measureNanoTime
 
 class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback,
         AdapterView.OnItemClickListener {
@@ -46,29 +45,28 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         val adapter = this.adapter ?: throw NullPointerException()
         val externalDir = File(path)
         val fileList = mutableListOf<String>()
-        lateinit var metas: List<FileMetadata>
-        val time = measureNanoTime {
-            FilePreloader.load(path, ::FileMetadata) {
-                metas = it
+
+        val timeStart = System.nanoTime()
+        FilePreloader.load(this, path, ::FileMetadata) {
+            val timeDelta = (System.nanoTime() - timeStart)/ 1_000_000.0
+
+            currentPath = externalDir.absolutePath
+
+            pathList.clear()
+            pathList.addAll(mutableListOf(path, externalDir.parent))
+
+            adapter.clear()
+            adapter.addAll(listOf(".", ".."))
+
+            it.forEach {
+                fileList.add(it.toString())
+                pathList.add(if(it.isDirectory) it.path else null)
             }
-        } / 1_000_000.0
 
-        currentPath = externalDir.absolutePath
+            adapter.addAll(fileList)
 
-        pathList.clear()
-        pathList.addAll(mutableListOf(path, externalDir.parent))
-
-        adapter.clear()
-        adapter.addAll(listOf(".", ".."))
-
-        metas.forEach {
-            fileList.add(it.toString())
-            pathList.add(if(it.isDirectory) it.path else null)
+            timeView.text = "${timeDelta}ms\n------------ FILES IN ${externalDir.absolutePath} ------------"
         }
-
-        adapter.addAll(fileList)
-
-        timeView.text = "${time}ms\n------------ FILES IN ${externalDir.absolutePath} ------------"
     }
 
     private fun getStartingFile():File {
@@ -81,18 +79,16 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
     private fun dump() {
         val adapter = this.adapter ?: throw NullPointerException()
 
-        var metas: List<FileMetadata>? = null
+        val timeStart = System.nanoTime()
 
-        val time = measureNanoTime {
-            FilePreloader.getAllDataLoaded<FileMetadata> {
-                metas = it
-            }
-        } / 1_000_000.0
+        FilePreloader.getAllDataLoaded<FileMetadata> (this) {
+            val timeDelta = (System.nanoTime() - timeStart)/ 1_000_000.0
 
-        adapter.clear()
-        adapter.addAll(metas?.map { it.toString() })
+            adapter.clear()
+            adapter.addAll(it?.map { it.toString() })
 
-        timeView.text = "${time}ms\n------ FILES DUMP FOR ${currentPath} ------"
+            timeView.text = "${timeDelta}ms\n------ FILES DUMP FOR ${currentPath} ------"
+        }
     }
 
     fun onReadButtonClick(v: View) {
