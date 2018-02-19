@@ -5,7 +5,6 @@ import com.amaze.filepreloaderlibrary.Processor.PRELOAD_LIST
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
-import java.io.File
 import java.io.FileFilter
 import java.util.*
 
@@ -62,7 +61,7 @@ object Processor {
      */
     fun workFrom(unit: ProcessUnit) {
         launch {
-            val file = File(unit.first)
+            val file = KFile(unit.first)
 
             //Load current folder
             PRELOADED_MAP_MUTEX.withLock {
@@ -77,9 +76,9 @@ object Processor {
             }
 
             //Load children folders
-            (file.listFiles(FileFilter {
+            file.listFiles(FileFilter {
                 it.isDirectory
-            }) as Array<File>?)?.forEach {
+            })?.forEach {
                 PRELOADED_MAP_MUTEX.withLock {
                     if (PRELOADED_MAP[it.path] == null) {
                         val subfiles = it.list() ?: arrayOf()
@@ -94,13 +93,14 @@ object Processor {
 
             //Load parent folder
             PRELOADED_MAP_MUTEX.withLock {
-                if (PRELOADED_MAP[file.parent] == null) {
-                    val parentFileList: Array<File>? = file.parentFile.listFiles()
+                val parentPath = file.parent
+                if (parentPath != null && PRELOADED_MAP[parentPath] == null) {
+                    val parentFileList: Array<KFile>? = file.parentFile?.listFiles()
                     if (parentFileList != null) {
                         parentFileList.forEach {
-                            Processor.addToProcess(file.parent, ProcessUnit(it.path, unit.second))
+                            Processor.addToProcess(parentPath, ProcessUnit(it.path, unit.second))
                         }
-                        PRELOADED_MAP[file.parent] = PreloadedFolder(parentFileList.size)
+                        PRELOADED_MAP[parentPath] = PreloadedFolder(parentFileList.size)
                     }
                 }
             }
@@ -117,8 +117,8 @@ object Processor {
      */
     fun work(unit: ProcessUnit) {
         launch {
-            val file = File(unit.first)
-            val fileList = file.list()
+            val file = KFile(unit.first)
+            val fileList = file.list() ?: arrayOf()
 
             PRELOAD_LIST_MUTEX.withLock {
                 for (path in fileList) {

@@ -2,7 +2,6 @@ package com.amaze.filepreloaderlibrary
 
 import android.app.Activity
 import kotlinx.coroutines.experimental.launch
-import java.io.File
 
 /**
  * Use this class to interact with the library.
@@ -41,7 +40,7 @@ object FilePreloader {
                 var path = path
                 if (!path.endsWith(DIVIDER)) path += DIVIDER
 
-                val list = File(path).list()?.map { instatiator.invoke(path + it) } ?: listOf()
+                val list = KFile(path).list()?.map { instatiator.invoke(path + it) } ?: listOf()
 
                 activity.runOnUiThread { getList(list) }
             }
