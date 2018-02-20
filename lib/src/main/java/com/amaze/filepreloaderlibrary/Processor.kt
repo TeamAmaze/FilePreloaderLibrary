@@ -23,6 +23,17 @@ typealias ProcessUnit = Pair<String, (String) -> DataContainer>
 typealias ProcessedUnit = Pair<String, DataContainer>
 
 /**
+ * The maximum allowed elements in [PRELOADED_MAP]
+ */
+private const val PRELOADED_MAP_MAXIMUM = 4*10000
+
+/**
+ * Thread safe.
+ * If entries must be deleted from [PRELOADED_MAP] in the order given by [DELETION_QUEUE].remove().
+ */
+private val DELETION_QUEUE: UniqueQueue = UniqueQueue()
+
+/**
  * Singleton charged with writing to [PRELOAD_LIST] and starting the preload
  * and, afterwards reading from [PRELOADED_MAP] and returning the output.
  */
@@ -72,6 +83,8 @@ object Processor {
                     }
 
                     PRELOADED_MAP[file.path] = PreloadedFolder(subfiles.size)
+                    if (PRELOADED_MAP.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                    DELETION_QUEUE.add(file.path)
                 }
             }
 
@@ -87,6 +100,8 @@ object Processor {
                         }
 
                         PRELOADED_MAP[it.path] = PreloadedFolder(subfiles.size)
+                        if (PRELOADED_MAP.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                        DELETION_QUEUE.add(it.path)
                     }
                 }
             }
@@ -100,7 +115,10 @@ object Processor {
                         parentFileList.forEach {
                             Processor.addToProcess(parentPath, ProcessUnit(it.path, unit.second))
                         }
+
                         PRELOADED_MAP[parentPath] = PreloadedFolder(parentFileList.size)
+                        if (PRELOADED_MAP.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                        DELETION_QUEUE.add(parentPath)
                     }
                 }
             }
@@ -128,6 +146,7 @@ object Processor {
 
             PRELOADED_MAP_MUTEX.withLock {
                 PRELOADED_MAP[file.path] = PreloadedFolder(fileList.size)
+                DELETION_QUEUE.add(file.path)
             }
             work()
         }
@@ -139,6 +158,7 @@ object Processor {
     fun cleanUp() {
         PRELOAD_LIST.clear()
         PRELOADED_MAP.clear()
+        DELETION_QUEUE.clear()
     }
 
     /**
@@ -185,8 +205,19 @@ object Processor {
         PRELOAD_LIST_MUTEX.withLock {
             PRELOAD_LIST.removeAll {
                 val (path, data) = it.invoke()
-                PRELOADED_MAP[path]!!.add(data)
+
+                val list = PRELOADED_MAP[path]
+                        ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
+                list.add(data)
             }
+        }
+    }
+
+    private fun cleanOldEntries() {
+        for (i in 0..PRELOADED_MAP_MAXIMUM / 4) {
+            if (!DELETION_QUEUE.isEmpty()) {
+                PRELOADED_MAP.remove(DELETION_QUEUE.remove())
+            } else break
         }
     }
 
