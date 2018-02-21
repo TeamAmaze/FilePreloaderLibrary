@@ -1,6 +1,7 @@
 package com.amaze.filepreloaderlibrary
 
-import java.io.File
+import android.app.Activity
+import kotlinx.coroutines.experimental.launch
 
 /**
  * Use this class to interact with the library.
@@ -19,8 +20,8 @@ object FilePreloader {
      * Asynchly preload folder (denoted by its [path]),
      * the [instantiator] is used to create the `[D]: DataContainer` objects
      */
-    fun <D: DataContainer>preload(path: String, instatiator: (String) -> D) {
-        Processor.work(ProcessUnit(path, instatiator))
+    fun <D: DataContainer>preload(path: String, instantiator: (String) -> D) {
+        Processor.work(ProcessUnit(path, instantiator))
     }
 
     /**
@@ -28,14 +29,21 @@ object FilePreloader {
      *
      * @see preload
      */
-    fun <D: DataContainer>load(path: String, instatiator: (String) -> D): List<D> {
-        val t:Pair<Boolean, List<DataContainer>>? = Processor.getLoaded(path)
+    fun <D: DataContainer>load(activity: Activity, path: String, instatiator: (String) -> D,
+                               getList: (List<D>) -> Unit) {
+        launch {
+            val t: Pair<Boolean, List<DataContainer>>? = Processor.getLoaded(path)
 
-        return if(t != null && t.first) t.second as List<D>
-        else {
-            var path = path
-            if(!path.endsWith(DIVIDER)) path += DIVIDER
-            File(path).list().map { instatiator.invoke(path + it) }
+            if (t != null && t.first) {
+                activity.runOnUiThread { getList(t.second as List<D>) }
+            } else {
+                var path = path
+                if (!path.endsWith(DIVIDER)) path += DIVIDER
+
+                val list = KFile(path).list()?.map { instatiator.invoke(path + it) } ?: listOf()
+
+                activity.runOnUiThread { getList(list) }
+            }
         }
     }
 
@@ -43,10 +51,15 @@ object FilePreloader {
      * *This function is only to test what data is being preloaded.*
      * Get all the loaded data, this will load the data in the current thread if it's not loaded.
      */
-    fun <D: DataContainer>getAllDataLoaded(): List<D>? {
-        val preloaded = Processor.getAllData()
-        if(preloaded != null && preloaded.isNotEmpty()) return preloaded as List<D>//todo fix
-        else return null
+    fun <D: DataContainer>getAllDataLoaded(activity: Activity, getList: (List<D>?) -> Unit) {
+        launch {
+            val preloaded = Processor.getAllData()
+
+            activity.runOnUiThread {
+                if (preloaded != null && preloaded.isNotEmpty()) getList(preloaded as List<D>)//todo fix
+                else getList(null)
+            }
+        }
     }
 }
 
