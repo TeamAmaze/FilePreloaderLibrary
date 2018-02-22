@@ -40,14 +40,14 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
     }
 
     private fun loadFolder(path: String) {
-        FilePreloader.preloadFrom(path, ::FileMetadata)//PRELOAD NEXT POSSIBLE FOLDERS
+        FilePreloader.with(::FileMetadata).preloadFrom(path)//PRELOAD NEXT POSSIBLE FOLDERS
 
         val adapter = this.adapter ?: throw NullPointerException()
         val externalDir = File(path)
         val fileList = mutableListOf<String>()
 
         val timeStart = System.nanoTime()
-        FilePreloader.load(this, path, ::FileMetadata) {
+        FilePreloader.with(::FileMetadata).load(this, path) {
             val timeDelta = (System.nanoTime() - timeStart)/ 1_000_000.0
 
             currentPath = externalDir.absolutePath
@@ -81,11 +81,12 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
         val timeStart = System.nanoTime()
 
-        FilePreloader.getAllDataLoaded<FileMetadata> (this) {
+        FilePreloader.getAllDataLoaded(this) {
             val timeDelta = (System.nanoTime() - timeStart)/ 1_000_000.0
 
             adapter.clear()
-            adapter.addAll(it?.map { it.toString() })
+            val a: List<String>? = it?.map { it.toString() }
+            if(a != null) adapter.addAll(a)
 
             timeView.text = "${timeDelta}ms\n------ FILES DUMP FOR ${currentPath} ------"
         }
@@ -104,7 +105,7 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
     }
 
     fun onCleanUpClick(v: View) {
-        Processor.cleanUp()
+        FilePreloader.cleanUp()
         if(showingLoaded) adapter?.clear()
         timeView.text = ""
     }
