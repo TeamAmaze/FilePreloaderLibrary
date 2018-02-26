@@ -25,7 +25,7 @@ internal typealias ProcessedUnit<D> = Pair<String, D>
 private const val PRELOADED_MAP_MAXIMUM = 4*10000
 
 /**
- * Singleton charged with writing to [mutableList] and starting the preload
+ * Singleton charged with writing to [preloadList] and starting the preload
  * and, afterwards reading from [preloadedList] and returning the output.
  */
 internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
@@ -43,7 +43,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * 'Load a folder' means that the function `[unit].second` will be called
      * on each file (represented by its path) inside the folder.
      */
-    private val mutableList: MutableList<() -> ProcessedUnit<D>> =
+    private val preloadList: MutableList<() -> ProcessedUnit<D>> =
             Collections.synchronizedList(mutableListOf<() -> ProcessedUnit<D>>())
     private val preloadListMutex = Mutex()
 
@@ -147,17 +147,17 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * Clear everything, all data loaded will be discarded.
      */
     internal fun clear() {
-        mutableList.clear()
+        preloadList.clear()
         getPreloadMap().clear()
         deletionQueue.clear()
     }
 
     /**
-     * Add file (represented by [unit]) to the [mutableList] to be preloaded by [work].
+     * Add file (represented by [unit]) to the [preloadList] to be preloaded by [work].
      */
     private fun addToProcess(path: String, unit: ProcessUnit<D>) {
         val f: () -> ProcessedUnit<D> = { load(path, unit) }
-        mutableList.add(f)
+        preloadList.add(f)
     }
 
     /**
@@ -186,12 +186,12 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * Calls each function in [mutableList] (removing it).
+     * Calls each function in [preloadList] (removing it).
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
     private suspend fun work() {
         preloadListMutex.withLock {
-            mutableList.removeAll {
+            preloadList.removeAll {
                 val (path, data) = it.invoke()
 
                 val list = getPreloadMap()[path] as PreloadedFolder<D>?

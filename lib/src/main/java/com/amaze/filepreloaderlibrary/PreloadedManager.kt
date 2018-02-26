@@ -13,7 +13,7 @@ import java.util.*
  * that concurrent operations are safe.
  */
 object PreloadedManager {
-    private val preloadedObjectsMap: MutableMap<Class<out DataContainer>, MutableMap<String, PreloadedFolder<out DataContainer>>> =
+    private val preloadedObjectsMap: MutableMap<Class<out DataContainer>, PreloadedFoldersMap<out DataContainer>> =
             hashMapOf()
     private val preloadedObjectMutexMap: MutableMap<Class<out DataContainer>, Mutex> = hashMapOf()
 
@@ -23,7 +23,7 @@ object PreloadedManager {
         preloadedObjectMutexMap[clazz] = Mutex()
     }
 
-    internal fun get(clazz: Class<out DataContainer>): MutableMap<String, PreloadedFolder<out DataContainer>>? {
+    internal fun get(clazz: Class<out DataContainer>): PreloadedFoldersMap<out DataContainer>? {
         return preloadedObjectsMap[clazz]
     }
 
