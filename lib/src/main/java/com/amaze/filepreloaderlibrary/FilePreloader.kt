@@ -8,10 +8,10 @@ import java.lang.ref.WeakReference
  * Use this class to interact with the library.
  */
 object FilePreloader {
-    private val weakList: MutableSet<WeakReference<SpecializedPreloader<DataContainer>>> = mutableSetOf()
+    val weakList: MutableSet<WeakReference<SpecializedPreloader<DataContainer>>> = mutableSetOf()
 
-    fun <D: DataContainer>with(f: (String) -> D): SpecializedPreloader<D> {
-        val v = SpecializedPreloader(FetcherFunction(f))
+    inline fun <reified D: DataContainer>with(noinline f: (String) -> D): SpecializedPreloader<D> {
+        val v = SpecializedPreloader(D::class.java, FetcherFunction(f))
         weakList.add(WeakReference(v))
         return v
     }

@@ -3,8 +3,9 @@ package com.amaze.filepreloaderlibrary
 import android.app.Activity
 import kotlinx.coroutines.experimental.launch
 
-class SpecializedPreloader<out D: DataContainer>(private val fetcher: FetcherFunction<D>) {
-    private val processor: Processor<D> = Processor()
+class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
+                                                 private val fetcher: FetcherFunction<D>) {
+    private val processor: Processor<D> = Processor(clazz)
 
     /**
      * Asynchly preload every subfolder in this [path] (exept '.'),

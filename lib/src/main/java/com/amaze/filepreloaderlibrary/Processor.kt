@@ -29,7 +29,14 @@ private const val PRELOADED_MAP_MAXIMUM = 4*10000
  * Singleton charged with writing to [mutableList] and starting the preload
  * and, afterwards reading from [preloadedList] and returning the output.
  */
-internal class Processor<D: DataContainer> {
+internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
+
+    init {
+        if(PreloadedManager.get(clazz) == null) {
+            PreloadedManager.add(clazz)
+        }
+    }
+
     /**
      * Thread safe.
      * All the callable executions to load all the folders.
@@ -40,19 +47,6 @@ internal class Processor<D: DataContainer> {
     private val mutableList: MutableList<() -> ProcessedUnit<D>> =
             Collections.synchronizedList(mutableListOf<() -> ProcessedUnit<D>>())
     private val preloadListMutex = Mutex()
-
-    /**
-     * Thread safe.
-     * Maps each folder to a list of [DataContainer] with each file's data.
-     * The first folder is passed in [Processor.workFrom] or [Processor.work] to get the result of the
-     * load folder operation.
-     *
-     * 'Load a folder' means that the function `[unit].second` will be called
-     * on each file (represented by its path) inside the folder.
-     */
-    private val preloadedList: MutableMap<String, PreloadedFolder<D>> =
-            Collections.synchronizedMap(hashMapOf<String, PreloadedFolder<D>>())
-    private val preloadedListMutex = Mutex()
 
     /**
      * Thread safe.
@@ -73,15 +67,15 @@ internal class Processor<D: DataContainer> {
             val file = KFile(unit.first)
 
             //Load current folder
-            preloadedListMutex.withLock {
-                if (preloadedList[file.path] == null) {
+            getPreloadMapMutex().withLock {
+                if (getPreloadMap()[file.path] == null) {
                     val subfiles: Array<String> = file.list() ?: arrayOf()
                     for (filename in subfiles) {
                         addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.second))
                     }
 
-                    preloadedList[file.path] = PreloadedFolder(subfiles.size)
-                    if (preloadedList.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                    getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
+                    if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                     deletionQueue.add(file.path)
                 }
             }
@@ -90,32 +84,32 @@ internal class Processor<D: DataContainer> {
             file.listFiles(FileFilter {
                 it.isDirectory
             })?.forEach {
-                preloadedListMutex.withLock {
-                    if (preloadedList[it.path] == null) {
+                getPreloadMapMutex().withLock {
+                    if (getPreloadMap()[it.path] == null) {
                         val subfiles = it.list() ?: arrayOf()
                         for (filename in subfiles) {
                             addToProcess(it.path, ProcessUnit(it.path + DIVIDER + filename, unit.second))
                         }
 
-                        preloadedList[it.path] = PreloadedFolder(subfiles.size)
-                        if (preloadedList.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                        getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
+                        if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         deletionQueue.add(it.path)
                     }
                 }
             }
 
             //Load parent folder
-            preloadedListMutex.withLock {
+            getPreloadMapMutex().withLock {
                 val parentPath = file.parent
-                if (parentPath != null && preloadedList[parentPath] == null) {
+                if (parentPath != null && getPreloadMap()[parentPath] == null) {
                     val parentFileList: Array<KFile>? = file.parentFile?.listFiles()
                     if (parentFileList != null) {
                         parentFileList.forEach {
                             addToProcess(parentPath, ProcessUnit(it.path, unit.second))
                         }
 
-                        preloadedList[parentPath] = PreloadedFolder(parentFileList.size)
-                        if (preloadedList.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                        getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
+                        if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         deletionQueue.add(parentPath)
                     }
                 }
@@ -142,8 +136,8 @@ internal class Processor<D: DataContainer> {
                 }
             }
 
-            preloadedListMutex.withLock {
-                preloadedList[file.path] = PreloadedFolder(fileList.size)
+            getPreloadMapMutex().withLock {
+                getPreloadMap()[file.path] = PreloadedFolder(fileList.size)
                 deletionQueue.add(file.path)
             }
             work()
@@ -155,7 +149,7 @@ internal class Processor<D: DataContainer> {
      */
     internal fun clear() {
         mutableList.clear()
-        preloadedList.clear()
+        getPreloadMap().clear()
         deletionQueue.clear()
     }
 
@@ -173,10 +167,10 @@ internal class Processor<D: DataContainer> {
      * @see work to understand.
      */
     internal suspend fun getLoaded(path: String): Pair<Boolean, List<D>>? {
-        preloadedListMutex.withLock {
-            val completeSet = preloadedList[path]
+        getPreloadMapMutex().withLock {
+            val completeSet = getPreloadMap()[path]
             if (completeSet == null) return null
-            else return completeSet.isComplete() to completeSet.toList()
+            else return completeSet.isComplete() to completeSet.toList() as List<D>
         }
     }
 
@@ -188,9 +182,9 @@ internal class Processor<D: DataContainer> {
      * @see workFrom to understand.
      */
     internal suspend fun getAllData(): List<DataContainer>? {
-        preloadedListMutex.withLock {
+        getPreloadMapMutex().withLock {
             val completeList = mutableListOf<DataContainer>()
-            preloadedList.map { completeList.addAll(it.value) }
+            getPreloadMap().map { completeList.addAll(it.value) }
             return completeList
         }
     }
@@ -204,7 +198,7 @@ internal class Processor<D: DataContainer> {
             mutableList.removeAll {
                 val (path, data) = it.invoke()
 
-                val list = preloadedList[path]
+                val list = getPreloadMap()[path] as PreloadedFolder<D>?
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
                 list.add(data)
             }
@@ -214,7 +208,7 @@ internal class Processor<D: DataContainer> {
     private fun cleanOldEntries() {
         for (i in 0..PRELOADED_MAP_MAXIMUM / 4) {
             if (!deletionQueue.isEmpty()) {
-                preloadedList.remove(deletionQueue.remove())
+                getPreloadMap().remove(deletionQueue.remove())
             } else break
         }
     }
@@ -225,4 +219,8 @@ internal class Processor<D: DataContainer> {
     private fun load(path: String, unit: ProcessUnit<D>): ProcessedUnit<D> {
         return ProcessedUnit(path, unit.second.process(unit.first))
     }
+
+    private fun getPreloadMap() = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+
+    private fun getPreloadMapMutex() = PreloadedManager.getMutex(clazz) ?: throw NullPointerException("No Mutex for $clazz!")
 }
