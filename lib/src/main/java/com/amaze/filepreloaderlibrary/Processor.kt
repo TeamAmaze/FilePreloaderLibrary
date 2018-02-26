@@ -10,13 +10,12 @@ import java.util.*
 * Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
 * This is done asynchly.
 *
-* @see Processor.workFrom
 * @see Processor.work
 */
 internal typealias ProcessUnit<D> = Pair<String, FetcherFunction<D>>
 
 /**
- * Contains the data (`[ProcessedUnit].second`) for a file inside the path `[ProcessedUnit].first`
+ * Contains the metadata (`[ProcessedUnit].second`) for a file inside the path `[ProcessedUnit].first`
  */
 internal typealias ProcessedUnit<D> = Pair<String, D>
 
@@ -55,7 +54,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     private val deletionQueue: UniqueQueue = UniqueQueue()
 
     /**
-     * Asynchly load every folder inside the path `[unit].first` except itself (aka '.').
+     * Asynchly load every folder inside the path `[unit].first`.
      * It will even load the parent (aka '..'), as this method implies that the user can go up
      * (in the filesystem tree).
      *
@@ -154,7 +153,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * Add file (represented by [unit]) to the [mutableList] to be preloaded by [Threader].
+     * Add file (represented by [unit]) to the [mutableList] to be preloaded by [work].
      */
     private fun addToProcess(path: String, unit: ProcessUnit<D>) {
         val f: () -> ProcessedUnit<D> = { load(path, unit) }
@@ -175,11 +174,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * *This function is only to test what data is being preloaded.*
-     * Gets all the loaded files inside the folders (except '.') in the folder denoted by the [path].
-     * The parameter [clean] indicates if the data should be cleaned from the library's memory.
-     *
-     * @see workFrom to understand.
+     * *ONLY USE FOR DEBUGGING*
+     * This function gets every file metadata loaded.
      */
     internal suspend fun getAllData(): List<DataContainer>? {
         getPreloadMapMutex().withLock {
@@ -190,8 +186,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * NEVER CALL ON MAIN THREAD
-     * Loads every element in mutableList
+     * Calls each function in [mutableList] (removing it).
+     * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
     private suspend fun work() {
         preloadListMutex.withLock {
@@ -205,6 +201,9 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         }
     }
 
+    /**
+     * Cleans entries in [getPreloadMap] to free memory.
+     */
     private fun cleanOldEntries() {
         for (i in 0..PRELOADED_MAP_MAXIMUM / 4) {
             if (!deletionQueue.isEmpty()) {
@@ -220,7 +219,17 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         return ProcessedUnit(path, unit.second.process(unit.first))
     }
 
+    /**
+     * Gets the map for [D].
+     *
+     * @see PreloadedManager
+     */
     private fun getPreloadMap() = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
 
+    /**
+     * Gets the mutex for [getPreloadMap] for [D].
+     *
+     * @see PreloadedManager
+     */
     private fun getPreloadMapMutex() = PreloadedManager.getMutex(clazz) ?: throw NullPointerException("No Mutex for $clazz!")
 }

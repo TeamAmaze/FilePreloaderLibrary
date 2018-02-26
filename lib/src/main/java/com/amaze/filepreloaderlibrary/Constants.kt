@@ -3,6 +3,9 @@ package com.amaze.filepreloaderlibrary
 import java.io.File
 import java.io.FileFilter
 
+/**
+ * Standard divider for unix
+ */
 const val DIVIDER = "/"
 
 /**

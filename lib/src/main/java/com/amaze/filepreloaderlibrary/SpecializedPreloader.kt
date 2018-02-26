@@ -3,13 +3,16 @@ package com.amaze.filepreloaderlibrary
 import android.app.Activity
 import kotlinx.coroutines.experimental.launch
 
+/**
+ * This class deals with preloading files for a given type [D], it uses [processor] to perform
+ * the actual load.
+ */
 class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
                                                  private val fetcher: FetcherFunction<D>) {
     private val processor: Processor<D> = Processor(clazz)
 
     /**
-     * Asynchly preload every subfolder in this [path] (exept '.'),
-     * the [instantiator] is used to create the `[D]: DataContainer` objects.
+     * Asynchly preload every subfolder in this [path].
      */
     fun preloadFrom(path: String) {
         processor.workFrom(ProcessUnit(path, fetcher))
@@ -17,16 +20,13 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
 
     /**
      * Asynchly preload folder (denoted by its [path]),
-     * the [instantiator] is used to create the `[D]: DataContainer` objects
      */
     fun preload(path: String) {
         processor.work(ProcessUnit(path, fetcher))
     }
 
     /**
-     * Get the loaded data, this will load the data in the current thread if it's not loaded.
-     *
-     * @see preload
+     * Get the loaded data. [getList] will run on UI thread.
      */
     fun load(activity: Activity, path: String, getList: (List<D>) -> Unit) {
         launch {
@@ -45,7 +45,16 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
         }
     }
 
+    /**
+     * *ONLY USE FOR DEBUGGING*
+     * This function gets every file metadata loaded by this [SpecializedPreloader].
+     */
     suspend fun getAllData() = processor.getAllData()
 
+    /**
+     * This function clears every file metadata loaded by this [SpecializedPreloader].
+     * It's usage is not recommended as the [Processor] already has a more efficient cleaning
+     * algorithm (see [Processor.deletionQueue]).
+     */
     internal fun clear() = processor.clear()
 }

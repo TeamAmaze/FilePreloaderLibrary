@@ -1,7 +1,9 @@
 package com.amaze.filepreloaderlibrary
 
+import java.util.*
+
 /**
- * See [DELETION_QUEUE]
+ * @see Processor.deletionQueue
  */
 class UniqueQueue {
 
@@ -27,6 +29,12 @@ class UniqueQueue {
 
     fun isEmpty(): Boolean = synchronized(lock) { queue.isEmpty() }
 
+    /**
+     * This a queue implemented with a linked list.
+     *
+     * I am reinventing the wheel because [LinkedList].remove(E) is O(n),
+     * here [Queue].remove(Node) is O(1).
+     */
     private class Queue {
         private var first: Node? = null
         private var last: Node? = null
