@@ -48,12 +48,6 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     private val preloadListMutex = Mutex()
 
     /**
-     * Thread safe.
-     * If entries must be deleted from [PRELOADED_MAP] in the order given by [deletionQueue].remove().
-     */
-    private val deletionQueue: UniqueQueue = UniqueQueue()
-
-    /**
      * Asynchly load every folder inside the path `[unit].first`.
      * It will even load the parent (aka '..'), as this method implies that the user can go up
      * (in the filesystem tree).
@@ -75,7 +69,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
 
                     getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
                     if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                    deletionQueue.add(file.path)
+                    getDeleteQueue().add(file.path)
                 }
             }
 
@@ -92,7 +86,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
 
                         getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                        deletionQueue.add(it.path)
+                        getDeleteQueue().add(it.path)
                     }
                 }
             }
@@ -109,7 +103,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
 
                         getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                        deletionQueue.add(parentPath)
+                        getDeleteQueue().add(parentPath)
                     }
                 }
             }
@@ -137,7 +131,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
 
             getPreloadMapMutex().withLock {
                 getPreloadMap()[file.path] = PreloadedFolder(fileList.size)
-                deletionQueue.add(file.path)
+                getDeleteQueue().add(file.path)
             }
             work()
         }
@@ -149,7 +143,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     internal fun clear() {
         preloadList.clear()
         getPreloadMap().clear()
-        deletionQueue.clear()
+        getDeleteQueue().clear()
     }
 
     /**
@@ -169,7 +163,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         getPreloadMapMutex().withLock {
             val completeSet = getPreloadMap()[path]
             if (completeSet == null) return null
-            else return completeSet.isComplete() to completeSet.toList() as List<D>
+            else return completeSet.isComplete() to completeSet.toList()
         }
     }
 
@@ -194,7 +188,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             preloadList.removeAll {
                 val (path, data) = it.invoke()
 
-                val list = getPreloadMap()[path] as PreloadedFolder<D>?
+                val list = getPreloadMap()[path]
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
                 list.add(data)
             }
@@ -206,8 +200,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      */
     private fun cleanOldEntries() {
         for (i in 0..PRELOADED_MAP_MAXIMUM / 4) {
-            if (!deletionQueue.isEmpty()) {
-                getPreloadMap().remove(deletionQueue.remove())
+            if (!getDeleteQueue().isEmpty()) {
+                getPreloadMap().remove(getDeleteQueue().remove())
             } else break
         }
     }
@@ -224,7 +218,23 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      *
      * @see PreloadedManager
      */
-    private fun getPreloadMap() = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+    private fun getPreloadMap(): PreloadedFoldersMap<D> {
+        val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+        return data.preloadedFoldersMap as PreloadedFoldersMap<D>
+    }
+
+    /**
+     * Gets the deleteQueue for [D].
+     *
+     * Thread safe.
+     * If entries must be deleted from [getPreloadMap] in the order given by [deletionQueue].remove().
+     *
+     * @see PreloadedManager
+     */
+    private fun getDeleteQueue(): UniqueQueue {
+        val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+        return data.deleteQueue
+    }
 
     /**
      * Gets the mutex for [getPreloadMap] for [D].
