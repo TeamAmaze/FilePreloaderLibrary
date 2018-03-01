@@ -2,63 +2,55 @@ package com.amaze.filepreloaderlibrary
 
 import android.app.Activity
 import kotlinx.coroutines.experimental.launch
+import java.lang.ref.WeakReference
 
 /**
  * Use this class to interact with the library.
  */
 object FilePreloader {
-
     /**
-     * Asynchly preload every subfolder in this [path] (exept '.'),
-     * the [instantiator] is used to create the `[D]: DataContainer` objects.
+     * Save a [WeakReference] to every [SpecializedPreloader] created so that [getAllDataLoaded] and
+     * [cleanUp] can be called.
      */
-    fun <D: DataContainer>preloadFrom(path: String, instantiator: (String) -> D) {
-        Processor.workFrom(ProcessUnit(path, instantiator))
-    }
+    val weakList: MutableSet<WeakReference<SpecializedPreloader<DataContainer>>> = mutableSetOf()
 
     /**
-     * Asynchly preload folder (denoted by its [path]),
-     * the [instantiator] is used to create the `[D]: DataContainer` objects
-     */
-    fun <D: DataContainer>preload(path: String, instantiator: (String) -> D) {
-        Processor.work(ProcessUnit(path, instantiator))
-    }
-
-    /**
-     * Get the loaded data, this will load the data in the current thread if it's not loaded.
+     * This gets the object type [D] and function [f] to load data.
+     * Reification is so that the type of [D] can be known, and the correct object can
+     * be loaded ([SpecializedPreloader.preload]) and returned ([SpecializedPreloader.load]).
      *
-     * @see preload
+     * @see [PreloadedManager].
      */
-    fun <D: DataContainer>load(activity: Activity, path: String, instatiator: (String) -> D,
-                               getList: (List<D>) -> Unit) {
+    inline fun <reified D: DataContainer>with(noinline f: (String) -> D): SpecializedPreloader<D> {
+        val v = SpecializedPreloader(D::class.java, FetcherFunction(f))
+        weakList.add(WeakReference(v))
+        return v
+    }
+
+    /**
+     * *ONLY USE FOR DEBUGGING*
+     * Get all the loaded data, this will load the data in the current thread if it's not loaded.
+     */
+    fun getAllDataLoaded(activity: Activity, getList: (List<DataContainer>?) -> Unit) {
         launch {
-            val t: Pair<Boolean, List<DataContainer>>? = Processor.getLoaded(path)
+            val preloaded = mutableListOf<DataContainer>()
+            weakList.forEach {
+                it.get()?.getAllData()?.forEach { preloaded.add(it) }
+            }
 
-            if (t != null && t.first) {
-                activity.runOnUiThread { getList(t.second as List<D>) }
-            } else {
-                var path = path
-                if (!path.endsWith(DIVIDER)) path += DIVIDER
-
-                val list = KFile(path).list()?.map { instatiator.invoke(path + it) } ?: listOf()
-
-                activity.runOnUiThread { getList(list) }
+            activity.runOnUiThread {
+                if (preloaded.isNotEmpty()) getList(preloaded)//todo fix
+                else getList(null)
             }
         }
     }
 
     /**
-     * *This function is only to test what data is being preloaded.*
-     * Get all the loaded data, this will load the data in the current thread if it's not loaded.
+     * Clear everything, all metadata loaded will be discarded.
      */
-    fun <D: DataContainer>getAllDataLoaded(activity: Activity, getList: (List<D>?) -> Unit) {
-        launch {
-            val preloaded = Processor.getAllData()
-
-            activity.runOnUiThread {
-                if (preloaded != null && preloaded.isNotEmpty()) getList(preloaded as List<D>)//todo fix
-                else getList(null)
-            }
+    fun cleanUp() {
+        weakList.forEach {
+            it.get()?.clear()
         }
     }
 }

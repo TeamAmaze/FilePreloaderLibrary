@@ -1,7 +1,5 @@
 package com.amaze.filepreloaderlibrary
 
-import com.amaze.filepreloaderlibrary.Processor.PRELOADED_MAP
-import com.amaze.filepreloaderlibrary.Processor.PRELOAD_LIST
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
@@ -12,15 +10,14 @@ import java.util.*
 * Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
 * This is done asynchly.
 *
-* @see Processor.workFrom
 * @see Processor.work
 */
-typealias ProcessUnit = Pair<String, (String) -> DataContainer>
+internal typealias ProcessUnit<D> = Pair<String, FetcherFunction<D>>
 
 /**
- * Contains the data (`[ProcessedUnit].second`) for a file inside the path `[ProcessedUnit].first`
+ * Contains the metadata (`[ProcessedUnit].second`) for a file inside the path `[ProcessedUnit].first`
  */
-typealias ProcessedUnit = Pair<String, DataContainer>
+internal typealias ProcessedUnit<D> = Pair<String, D>
 
 /**
  * The maximum allowed elements in [PRELOADED_MAP]
@@ -28,16 +25,17 @@ typealias ProcessedUnit = Pair<String, DataContainer>
 private const val PRELOADED_MAP_MAXIMUM = 4*10000
 
 /**
- * Thread safe.
- * If entries must be deleted from [PRELOADED_MAP] in the order given by [DELETION_QUEUE].remove().
+ * Singleton charged with writing to [preloadList] and starting the preload
+ * and, afterwards reading from [preloadedList] and returning the output.
  */
-private val DELETION_QUEUE: UniqueQueue = UniqueQueue()
+internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
 
-/**
- * Singleton charged with writing to [PRELOAD_LIST] and starting the preload
- * and, afterwards reading from [PRELOADED_MAP] and returning the output.
- */
-object Processor {
+    init {
+        if(PreloadedManager.get(clazz) == null) {
+            PreloadedManager.add(clazz)
+        }
+    }
+
     /**
      * Thread safe.
      * All the callable executions to load all the folders.
@@ -45,46 +43,33 @@ object Processor {
      * 'Load a folder' means that the function `[unit].second` will be called
      * on each file (represented by its path) inside the folder.
      */
-    private val PRELOAD_LIST: MutableList<() -> ProcessedUnit> =
-            Collections.synchronizedList(mutableListOf<() -> ProcessedUnit>())
-    private val PRELOAD_LIST_MUTEX = Mutex()
+    private val preloadList: MutableList<() -> ProcessedUnit<D>> =
+            Collections.synchronizedList(mutableListOf<() -> ProcessedUnit<D>>())
+    private val preloadListMutex = Mutex()
 
     /**
-     * Thread safe.
-     * Maps each folder to a list of [DataContainer] with each file's data.
-     * The first folder is passed in [Processor.workFrom] or [Processor.work] to get the result of the
-     * load folder operation.
-     *
-     * 'Load a folder' means that the function `[unit].second` will be called
-     * on each file (represented by its path) inside the folder.
-     */
-    private val PRELOADED_MAP: MutableMap<String, PreloadedFolder> =
-            Collections.synchronizedMap(hashMapOf<String, PreloadedFolder>())
-    private val PRELOADED_MAP_MUTEX = Mutex()
-
-    /**
-     * Asynchly load every folder inside the path `[unit].first` except itself (aka '.').
+     * Asynchly load every folder inside the path `[unit].first`.
      * It will even load the parent (aka '..'), as this method implies that the user can go up
      * (in the filesystem tree).
      *
      * 'Load a folder' means that the function `[unit].second` will be called
      * on each file (represented by its path) inside the folder.
      */
-    fun workFrom(unit: ProcessUnit) {
+    internal fun workFrom(unit: ProcessUnit<D>) {
         launch {
             val file = KFile(unit.first)
 
             //Load current folder
-            PRELOADED_MAP_MUTEX.withLock {
-                if (PRELOADED_MAP[file.path] == null) {
+            getPreloadMapMutex().withLock {
+                if (getPreloadMap()[file.path] == null) {
                     val subfiles: Array<String> = file.list() ?: arrayOf()
                     for (filename in subfiles) {
-                        Processor.addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.second))
+                        addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.second))
                     }
 
-                    PRELOADED_MAP[file.path] = PreloadedFolder(subfiles.size)
-                    if (PRELOADED_MAP.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                    DELETION_QUEUE.add(file.path)
+                    getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
+                    if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                    getDeleteQueue().add(file.path)
                 }
             }
 
@@ -92,33 +77,33 @@ object Processor {
             file.listFiles(FileFilter {
                 it.isDirectory
             })?.forEach {
-                PRELOADED_MAP_MUTEX.withLock {
-                    if (PRELOADED_MAP[it.path] == null) {
+                getPreloadMapMutex().withLock {
+                    if (getPreloadMap()[it.path] == null) {
                         val subfiles = it.list() ?: arrayOf()
                         for (filename in subfiles) {
-                            Processor.addToProcess(it.path, ProcessUnit(it.path + DIVIDER + filename, unit.second))
+                            addToProcess(it.path, ProcessUnit(it.path + DIVIDER + filename, unit.second))
                         }
 
-                        PRELOADED_MAP[it.path] = PreloadedFolder(subfiles.size)
-                        if (PRELOADED_MAP.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                        DELETION_QUEUE.add(it.path)
+                        getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
+                        if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                        getDeleteQueue().add(it.path)
                     }
                 }
             }
 
             //Load parent folder
-            PRELOADED_MAP_MUTEX.withLock {
+            getPreloadMapMutex().withLock {
                 val parentPath = file.parent
-                if (parentPath != null && PRELOADED_MAP[parentPath] == null) {
+                if (parentPath != null && getPreloadMap()[parentPath] == null) {
                     val parentFileList: Array<KFile>? = file.parentFile?.listFiles()
                     if (parentFileList != null) {
                         parentFileList.forEach {
-                            Processor.addToProcess(parentPath, ProcessUnit(it.path, unit.second))
+                            addToProcess(parentPath, ProcessUnit(it.path, unit.second))
                         }
 
-                        PRELOADED_MAP[parentPath] = PreloadedFolder(parentFileList.size)
-                        if (PRELOADED_MAP.size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                        DELETION_QUEUE.add(parentPath)
+                        getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
+                        if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                        getDeleteQueue().add(parentPath)
                     }
                 }
             }
@@ -133,20 +118,20 @@ object Processor {
      * 'Load a folder' means that the function `[unit].second` will be called
      * on each file (represented by its path) inside the folder.
      */
-    fun work(unit: ProcessUnit) {
+    internal fun work(unit: ProcessUnit<D>) {
         launch {
             val file = KFile(unit.first)
             val fileList = file.list() ?: arrayOf()
 
-            PRELOAD_LIST_MUTEX.withLock {
+            preloadListMutex.withLock {
                 for (path in fileList) {
-                    Processor.addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.second))
+                    addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.second))
                 }
             }
 
-            PRELOADED_MAP_MUTEX.withLock {
-                PRELOADED_MAP[file.path] = PreloadedFolder(fileList.size)
-                DELETION_QUEUE.add(file.path)
+            getPreloadMapMutex().withLock {
+                getPreloadMap()[file.path] = PreloadedFolder(fileList.size)
+                getDeleteQueue().add(file.path)
             }
             work()
         }
@@ -155,18 +140,18 @@ object Processor {
     /**
      * Clear everything, all data loaded will be discarded.
      */
-    fun cleanUp() {
-        PRELOAD_LIST.clear()
-        PRELOADED_MAP.clear()
-        DELETION_QUEUE.clear()
+    internal fun clear() {
+        preloadList.clear()
+        getPreloadMap().clear()
+        getDeleteQueue().clear()
     }
 
     /**
-     * Add file (represented by [unit]) to the [PRELOAD_LIST] to be preloaded by [Threader].
+     * Add file (represented by [unit]) to the [preloadList] to be preloaded by [work].
      */
-    private fun addToProcess(path: String, unit: ProcessUnit) {
-        val f: () -> ProcessedUnit = { load(path, unit) }
-        PRELOAD_LIST.add(f)
+    private fun addToProcess(path: String, unit: ProcessUnit<D>) {
+        val f: () -> ProcessedUnit<D> = { load(path, unit) }
+        preloadList.add(f)
     }
 
     /**
@@ -174,49 +159,49 @@ object Processor {
      *
      * @see work to understand.
      */
-    suspend fun getLoaded(path: String): Pair<Boolean, List<DataContainer>>? {
-        PRELOADED_MAP_MUTEX.withLock {
-            val completeSet = PRELOADED_MAP[path]
+    internal suspend fun getLoaded(path: String): Pair<Boolean, List<D>>? {
+        getPreloadMapMutex().withLock {
+            val completeSet = getPreloadMap()[path]
             if (completeSet == null) return null
             else return completeSet.isComplete() to completeSet.toList()
         }
     }
 
     /**
-     * *This function is only to test what data is being preloaded.*
-     * Gets all the loaded files inside the folders (except '.') in the folder denoted by the [path].
-     * The parameter [clean] indicates if the data should be cleaned from the library's memory.
-     *
-     * @see workFrom to understand.
+     * *ONLY USE FOR DEBUGGING*
+     * This function gets every file metadata loaded.
      */
-    suspend fun getAllData(): List<DataContainer>? {
-        PRELOADED_MAP_MUTEX.withLock {
+    internal suspend fun getAllData(): List<DataContainer>? {
+        getPreloadMapMutex().withLock {
             val completeList = mutableListOf<DataContainer>()
-            PRELOADED_MAP.map { completeList.addAll(it.value) }
+            getPreloadMap().map { completeList.addAll(it.value) }
             return completeList
         }
     }
 
     /**
-     * NEVER CALL ON MAIN THREAD
-     * Loads every element in PRELOAD_LIST
+     * Calls each function in [preloadList] (removing it).
+     * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
-    suspend fun work() {
-        PRELOAD_LIST_MUTEX.withLock {
-            PRELOAD_LIST.removeAll {
+    private suspend fun work() {
+        preloadListMutex.withLock {
+            preloadList.removeAll {
                 val (path, data) = it.invoke()
 
-                val list = PRELOADED_MAP[path]
+                val list = getPreloadMap()[path]
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
                 list.add(data)
             }
         }
     }
 
+    /**
+     * Cleans entries in [getPreloadMap] to free memory.
+     */
     private fun cleanOldEntries() {
         for (i in 0..PRELOADED_MAP_MAXIMUM / 4) {
-            if (!DELETION_QUEUE.isEmpty()) {
-                PRELOADED_MAP.remove(DELETION_QUEUE.remove())
+            if (!getDeleteQueue().isEmpty()) {
+                getPreloadMap().remove(getDeleteQueue().remove())
             } else break
         }
     }
@@ -224,5 +209,37 @@ object Processor {
     /**
      * This loads every folder.
      */
-    private fun load(path: String, unit: ProcessUnit) = ProcessedUnit(path, unit.second.invoke(unit.first))
+    private fun load(path: String, unit: ProcessUnit<D>): ProcessedUnit<D> {
+        return ProcessedUnit(path, unit.second.process(unit.first))
+    }
+
+    /**
+     * Gets the map for [D].
+     *
+     * @see PreloadedManager
+     */
+    private fun getPreloadMap(): PreloadedFoldersMap<D> {
+        val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+        return data.preloadedFoldersMap
+    }
+
+    /**
+     * Gets the deleteQueue for [D].
+     *
+     * Thread safe.
+     * If entries must be deleted from [getPreloadMap] in the order given by [deletionQueue].remove().
+     *
+     * @see PreloadedManager
+     */
+    private fun getDeleteQueue(): UniqueQueue {
+        val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+        return data.deleteQueue
+    }
+
+    /**
+     * Gets the mutex for [getPreloadMap] for [D].
+     *
+     * @see PreloadedManager
+     */
+    private fun getPreloadMapMutex() = PreloadedManager.getMutex(clazz) ?: throw NullPointerException("No Mutex for $clazz!")
 }

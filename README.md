@@ -23,10 +23,12 @@ dependencies {
 
 ```kotlin
 fun preload(externalDir: File) =
-        FilePreloader.preloadFrom(externalDir.absolutePath, ::FileMetadata)
+        FilePreloader.with(::FileMetadata).preloadFrom(externalDir.absolutePath)
 
-fun load(): List<FileMetadata> =
-        FilePreloader.loadFrom(externalDir.absolutePath, ::FileMetadata)
+fun load() = FilePreloader.with(::FileMetadata).loadFrom(externalDir.absolutePath) {
+            //Do something with the data
+            show(it) //it: List<FileMetadata>
+        }
 
 class FileMetadata(path: String): DataContainer(path) {
     private val name: String
