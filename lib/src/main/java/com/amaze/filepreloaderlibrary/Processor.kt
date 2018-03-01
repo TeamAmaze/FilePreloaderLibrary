@@ -220,7 +220,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      */
     private fun getPreloadMap(): PreloadedFoldersMap<D> {
         val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
-        return data.preloadedFoldersMap as PreloadedFoldersMap<D>
+        return data.preloadedFoldersMap
     }
 
     /**

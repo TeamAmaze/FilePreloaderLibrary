@@ -24,8 +24,8 @@ object PreloadedManager {
         preloadedObjectMutexMap[clazz] = Mutex()
     }
 
-    internal fun get(clazz: Class<out DataContainer>): ProcessorData<out DataContainer>? {
-        return preloadedObjectsMap[clazz]
+    internal fun <D: DataContainer>get(clazz: Class<D>): ProcessorData<D>? {
+        return preloadedObjectsMap[clazz] as ProcessorData<D>?
     }
 
     internal fun getMutex(clazz: Class<out DataContainer>): Mutex? {
