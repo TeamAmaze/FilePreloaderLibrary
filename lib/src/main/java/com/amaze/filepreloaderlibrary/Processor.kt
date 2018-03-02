@@ -57,6 +57,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      */
     internal fun workFrom(unit: ProcessUnit<D>) {
         launch {
+            var somethingAddedToPreload = false
             val file = KFile(unit.first)
 
             //Load current folder
@@ -70,6 +71,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                     getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
                     if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                     getDeleteQueue().add(file.path)
+
+                    somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
                 }
             }
 
@@ -87,6 +90,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                         getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         getDeleteQueue().add(it.path)
+
+                        somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
                     }
                 }
             }
@@ -104,11 +109,15 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                         getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         getDeleteQueue().add(parentPath)
+
+                        somethingAddedToPreload = somethingAddedToPreload || parentFileList.isNotEmpty()
                     }
                 }
             }
 
-            work()
+            if(somethingAddedToPreload) {
+                work()
+            }
         }
     }
 
@@ -133,7 +142,10 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 getPreloadMap()[file.path] = PreloadedFolder(fileList.size)
                 getDeleteQueue().add(file.path)
             }
-            work()
+
+            if(fileList.isNotEmpty()) {
+                work()
+            }
         }
     }
 
