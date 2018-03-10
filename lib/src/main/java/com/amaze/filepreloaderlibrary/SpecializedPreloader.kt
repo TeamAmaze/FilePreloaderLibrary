@@ -46,12 +46,6 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
     }
 
     /**
-     * *ONLY USE FOR DEBUGGING*
-     * This function gets every file metadata loaded by this [SpecializedPreloader].
-     */
-    suspend fun getAllData() = processor.getAllData()
-
-    /**
      * This function clears every file metadata loaded by this [SpecializedPreloader].
      * It's usage is not recommended as the [Processor] already has a more efficient cleaning
      * algorithm (see [Processor.deletionQueue]).

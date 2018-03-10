@@ -1,5 +1,6 @@
 package com.amaze.filepreloaderlibrary
 
+import android.util.Log
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
@@ -180,18 +181,6 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * *ONLY USE FOR DEBUGGING*
-     * This function gets every file metadata loaded.
-     */
-    internal suspend fun getAllData(): List<DataContainer>? {
-        getPreloadMapMutex().withLock {
-            val completeList = mutableListOf<DataContainer>()
-            getPreloadMap().map { completeList.addAll(it.value) }
-            return completeList
-        }
-    }
-
-    /**
      * Calls each function in [preloadList] (removing it).
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
@@ -199,6 +188,10 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         preloadListMutex.withLock {
             preloadList.removeAll {
                 val (path, data) = it.invoke()
+
+                if(FilePreloader.DEBUG) {
+                    Log.d("FilePreloader.Processor", "Loading from $path: $data")
+                }
 
                 val list = getPreloadMap()[path]
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")

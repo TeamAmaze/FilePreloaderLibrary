@@ -29,6 +29,8 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
         checkPermission()
 
+        FilePreloader.DEBUG = true
+
         adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mutableListOf())
         filelist.adapter = adapter
         filelist.onItemClickListener = this

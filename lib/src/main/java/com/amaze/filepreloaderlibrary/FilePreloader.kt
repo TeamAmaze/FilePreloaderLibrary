@@ -8,6 +8,9 @@ import java.lang.ref.WeakReference
  * Use this class to interact with the library.
  */
 object FilePreloader {
+
+    var DEBUG = false
+
     /**
      * Save a [WeakReference] to every [SpecializedPreloader] created so that [getAllDataLoaded] and
      * [cleanUp] can be called.
@@ -33,13 +36,10 @@ object FilePreloader {
      */
     fun getAllDataLoaded(activity: Activity, getList: (List<DataContainer>?) -> Unit) {
         launch {
-            val preloaded = mutableListOf<DataContainer>()
-            weakList.forEach {
-                it.get()?.getAllData()?.forEach { preloaded.add(it) }
-            }
+            val preloaded = PreloadedManager.getAllLoaded()
 
             activity.runOnUiThread {
-                if (preloaded.isNotEmpty()) getList(preloaded)//todo fix
+                if (preloaded.isNotEmpty()) getList(preloaded)
                 else getList(null)
             }
         }
