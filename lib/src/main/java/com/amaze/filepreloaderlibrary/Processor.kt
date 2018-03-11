@@ -181,22 +181,37 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
+     * When a [PreloadedFolder] is fully loaded the [listener] will be called
+     * If the path isn't going to be loaded the [listener] is invoked with argument null
+     */
+    internal suspend fun setCompletionListener(path: String, listener: (List<D>?)->Unit) {
+        getPreloadMapMutex().withLock {
+            val completeSet = getPreloadMap()[path]
+            if (completeSet == null) listener.invoke(null)
+            else completeSet.listener = { listener.invoke(it.toList()) }
+        }
+    }
+
+    /**
      * Calls each function in [preloadList] (removing it).
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
     private suspend fun work() {
         preloadListMutex.withLock {
-            preloadList.removeAll {
-                val (path, data) = it.invoke()
+            preloadList.forEach {
+                launch {
+                    val (path, data) = it.invoke()
 
-                if(FilePreloader.DEBUG) {
-                    Log.d("FilePreloader.Processor", "Loading from $path: $data")
+                    if (FilePreloader.DEBUG) {
+                        Log.d("FilePreloader.Processor", "Loading from $path: $data")
+                    }
+
+                    val list = getPreloadMap()[path]
+                            ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
+                    list.add(data)
                 }
-
-                val list = getPreloadMap()[path]
-                        ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
-                list.add(data)
             }
+            preloadList.clear()
         }
     }
 
