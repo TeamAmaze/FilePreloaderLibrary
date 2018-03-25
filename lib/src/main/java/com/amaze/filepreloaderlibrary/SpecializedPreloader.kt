@@ -1,6 +1,7 @@
 package com.amaze.filepreloaderlibrary
 
 import android.app.Activity
+import android.util.Log
 import kotlinx.coroutines.experimental.launch
 
 /**
@@ -32,24 +33,31 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
         launch {
             val t: Pair<Boolean, List<DataContainer>>? = processor.getLoaded(path)
 
-            if (t != null && t.first) {
-                activity.runOnUiThread { getList(t.second as List<D>) }
+            if (t != null) {
+                if(t.first) {
+                    activity.runOnUiThread { getList(t.second as List<D>) }
+                } else {
+                    processor.setCompletionListener(path) {
+                        it ?: throw NullPointerException()
+                        activity.runOnUiThread { getList(it) }
+                    }
+                }
             } else {
                 var path = path
                 if (!path.endsWith(DIVIDER)) path += DIVIDER
 
-                val list = KFile(path).list()?.map { fetcher.process(path + it) } ?: listOf()
+                val list = KFile(path).list()?.map {
+                    val data = fetcher.process(path + it)
+                    if(FilePreloader.DEBUG) {
+                        Log.w("FilePreloader.Special", "Manually loaded $data")
+                    }
+                    return@map data
+                } ?: listOf()
 
                 activity.runOnUiThread { getList(list) }
             }
         }
     }
-
-    /**
-     * *ONLY USE FOR DEBUGGING*
-     * This function gets every file metadata loaded by this [SpecializedPreloader].
-     */
-    suspend fun getAllData() = processor.getAllData()
 
     /**
      * This function clears every file metadata loaded by this [SpecializedPreloader].

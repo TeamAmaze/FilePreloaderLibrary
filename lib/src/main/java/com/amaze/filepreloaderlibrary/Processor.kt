@@ -1,5 +1,6 @@
 package com.amaze.filepreloaderlibrary
 
+import android.util.Log
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
@@ -57,6 +58,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      */
     internal fun workFrom(unit: ProcessUnit<D>) {
         launch {
+            var somethingAddedToPreload = false
             val file = KFile(unit.first)
 
             //Load current folder
@@ -70,6 +72,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                     getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
                     if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                     getDeleteQueue().add(file.path)
+
+                    somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
                 }
             }
 
@@ -87,6 +91,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                         getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         getDeleteQueue().add(it.path)
+
+                        somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
                     }
                 }
             }
@@ -104,11 +110,15 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                         getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         getDeleteQueue().add(parentPath)
+
+                        somethingAddedToPreload = somethingAddedToPreload || parentFileList.isNotEmpty()
                     }
                 }
             }
 
-            work()
+            if(somethingAddedToPreload) {
+                work()
+            }
         }
     }
 
@@ -133,7 +143,10 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 getPreloadMap()[file.path] = PreloadedFolder(fileList.size)
                 getDeleteQueue().add(file.path)
             }
-            work()
+
+            if(fileList.isNotEmpty()) {
+                work()
+            }
         }
     }
 
@@ -168,14 +181,14 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * *ONLY USE FOR DEBUGGING*
-     * This function gets every file metadata loaded.
+     * When a [PreloadedFolder] is fully loaded the [listener] will be called
+     * If the path isn't going to be loaded the [listener] is invoked with argument null
      */
-    internal suspend fun getAllData(): List<DataContainer>? {
+    internal suspend fun setCompletionListener(path: String, listener: (List<D>?)->Unit) {
         getPreloadMapMutex().withLock {
-            val completeList = mutableListOf<DataContainer>()
-            getPreloadMap().map { completeList.addAll(it.value) }
-            return completeList
+            val completeSet = getPreloadMap()[path]
+            if (completeSet == null) listener.invoke(null)
+            else completeSet.listener = { listener.invoke(it.toList()) }
         }
     }
 
@@ -185,13 +198,20 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      */
     private suspend fun work() {
         preloadListMutex.withLock {
-            preloadList.removeAll {
-                val (path, data) = it.invoke()
+            preloadList.forEach {
+                launch {
+                    val (path, data) = it.invoke()
 
-                val list = getPreloadMap()[path]
-                        ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
-                list.add(data)
+                    if (FilePreloader.DEBUG) {
+                        Log.d("FilePreloader.Processor", "Loading from $path: $data")
+                    }
+
+                    val list = getPreloadMap()[path]
+                            ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
+                    list.add(data)
+                }
             }
+            preloadList.clear()
         }
     }
 

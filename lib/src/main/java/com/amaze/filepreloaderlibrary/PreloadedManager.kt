@@ -32,6 +32,20 @@ object PreloadedManager {
         return preloadedObjectMutexMap[clazz]
     }
 
+    internal fun getAllLoaded(): List<DataContainer> {
+        val dataList = mutableListOf<DataContainer>()
+
+        preloadedObjectsMap.forEach {
+            it.value.preloadedFoldersMap.forEach {
+                it.value.forEach {
+                    dataList.add(it)
+                }
+            }
+        }
+
+        return dataList;
+    }
+
     data class ProcessorData<D: DataContainer>(val deleteQueue: UniqueQueue,
                                                val preloadedFoldersMap: PreloadedFoldersMap<D>)
 
