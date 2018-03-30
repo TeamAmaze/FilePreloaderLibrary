@@ -8,17 +8,17 @@ import java.io.FileFilter
 import java.util.*
 
 /**
-* Basically means call `[ProcessUnit].second` on each of `[ProcessUnit].first`'s files.
+* Basically means call `[ProcessUnit].fetcherFunction` on each of `[ProcessUnit].path`'s files.
 * This is done asynchly.
 *
 * @see Processor.work
 */
-internal typealias ProcessUnit<D> = Pair<String, FetcherFunction<D>>
+internal data class ProcessUnit<out D: DataContainer>(val path: String, val fetcherFunction: FetcherFunction<D>)
 
 /**
- * Contains the metadata (`[ProcessedUnit].second`) for a file inside the path `[ProcessedUnit].first`
+ * Contains the [ProcessedUnit].metadataObject for a file inside [ProcessedUnit].path
  */
-internal typealias ProcessedUnit<D> = Pair<String, D>
+internal data class ProcessedUnit<out D: DataContainer>(val path: String, val metadataObject: D)
 
 /**
  * The maximum allowed elements in [PRELOADED_MAP]
@@ -59,14 +59,14 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     internal fun workFrom(unit: ProcessUnit<D>) {
         launch {
             var somethingAddedToPreload = false
-            val file = KFile(unit.first)
+            val file = KFile(unit.path)
 
             //Load current folder
             getPreloadMapMutex().withLock {
                 if (getPreloadMap()[file.path] == null) {
                     val subfiles: Array<String> = file.list() ?: arrayOf()
                     for (filename in subfiles) {
-                        addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.second))
+                        addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction))
                     }
 
                     getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
@@ -85,7 +85,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                     if (getPreloadMap()[it.path] == null) {
                         val subfiles = it.list() ?: arrayOf()
                         for (filename in subfiles) {
-                            addToProcess(it.path, ProcessUnit(it.path + DIVIDER + filename, unit.second))
+                            addToProcess(it.path, ProcessUnit(it.path + DIVIDER + filename, unit.fetcherFunction))
                         }
 
                         getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
@@ -104,7 +104,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                     val parentFileList: Array<KFile>? = file.parentFile?.listFiles()
                     if (parentFileList != null) {
                         parentFileList.forEach {
-                            addToProcess(parentPath, ProcessUnit(it.path, unit.second))
+                            addToProcess(parentPath, ProcessUnit(it.path, unit.fetcherFunction))
                         }
 
                         getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
@@ -130,12 +130,12 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      */
     internal fun work(unit: ProcessUnit<D>) {
         launch {
-            val file = KFile(unit.first)
+            val file = KFile(unit.path)
             val fileList = file.list() ?: arrayOf()
 
             preloadListMutex.withLock {
                 for (path in fileList) {
-                    addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.second))
+                    addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.fetcherFunction))
                 }
             }
 
@@ -230,7 +230,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * This loads every folder.
      */
     private fun load(path: String, unit: ProcessUnit<D>): ProcessedUnit<D> {
-        return ProcessedUnit(path, unit.second.process(unit.first))
+        return ProcessedUnit(path, unit.fetcherFunction.process(unit.path))
     }
 
     /**
