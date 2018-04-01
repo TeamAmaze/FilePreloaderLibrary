@@ -199,17 +199,15 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     private suspend fun work() {
         preloadListMutex.withLock {
             preloadList.forEach {
-                launch {
-                    val (path, data) = it.invoke()
+                val (path, data) = it.invoke()
 
-                    if (FilePreloader.DEBUG) {
-                        Log.d("FilePreloader.Processor", "Loading from $path: $data")
-                    }
-
-                    val list = getPreloadMap()[path]
-                            ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
-                    list.add(data)
+                if (FilePreloader.DEBUG) {
+                    Log.d("FilePreloader.Processor", "Loading from $path: $data")
                 }
+
+                val list = getPreloadMap()[path]
+                        ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
+                list.add(data)
             }
             preloadList.clear()
         }
