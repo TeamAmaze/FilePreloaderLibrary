@@ -4,7 +4,6 @@ import android.util.Log
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
-import java.io.FileFilter
 import java.util.*
 
 /**
@@ -78,19 +77,19 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             }
 
             //Load children folders
-            file.listFiles(FileFilter {
-                it.isDirectory
-            })?.forEach {
+            Native.getDirectoriesInDirectory(unit.path).forEach {
                 getPreloadMapMutex().withLock {
-                    if (getPreloadMap()[it.path] == null) {
-                        val subfiles = it.list() ?: arrayOf()
+                    val currentPath = unit.path + DIVIDER + it
+
+                    if (getPreloadMap()[currentPath] == null) {
+                        val subfiles = KFile(currentPath).list() ?: arrayOf()
                         for (filename in subfiles) {
-                            addToProcess(it.path, ProcessUnit(it.path + DIVIDER + filename, unit.fetcherFunction))
+                            addToProcess(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction))
                         }
 
-                        getPreloadMap()[it.path] = PreloadedFolder(subfiles.size)
+                        getPreloadMap()[currentPath] = PreloadedFolder(subfiles.size)
                         if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                        getDeleteQueue().add(it.path)
+                        getDeleteQueue().add(currentPath)
 
                         somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
                     }
