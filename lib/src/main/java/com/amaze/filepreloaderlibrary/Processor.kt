@@ -63,7 +63,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             //Load current folder
             getPreloadMapMutex().withLock {
                 if (getPreloadMap()[file.path] == null) {
-                    val subfiles: Array<String> = file.list() ?: arrayOf()
+                    val subfiles: Array<String> = Native.getFilesInDirectory(unit.path)
                     for (filename in subfiles) {
                         addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction))
                     }
@@ -82,7 +82,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                     val currentPath = unit.path + DIVIDER + it
 
                     if (getPreloadMap()[currentPath] == null) {
-                        val subfiles = KFile(currentPath).list() ?: arrayOf()
+                        val subfiles: Array<String> = Native.getFilesInDirectory(currentPath)
                         for (filename in subfiles) {
                             addToProcess(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction))
                         }
@@ -100,18 +100,16 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             getPreloadMapMutex().withLock {
                 val parentPath = file.parent
                 if (parentPath != null && getPreloadMap()[parentPath] == null) {
-                    val parentFileList: Array<KFile>? = file.parentFile?.listFiles()
-                    if (parentFileList != null) {
-                        parentFileList.forEach {
-                            addToProcess(parentPath, ProcessUnit(it.path, unit.fetcherFunction))
-                        }
-
-                        getPreloadMap()[parentPath] = PreloadedFolder(parentFileList.size)
-                        if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
-                        getDeleteQueue().add(parentPath)
-
-                        somethingAddedToPreload = somethingAddedToPreload || parentFileList.isNotEmpty()
+                    val subfiles: Array<String> = Native.getFilesInDirectory(parentPath)
+                    subfiles.forEach {
+                        addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction))
                     }
+
+                    getPreloadMap()[parentPath] = PreloadedFolder(subfiles.size)
+                    if (getPreloadMap().size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
+                    getDeleteQueue().add(parentPath)
+
+                    somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
                 }
             }
 

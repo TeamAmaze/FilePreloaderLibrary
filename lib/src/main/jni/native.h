@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include <jni.h>
 
@@ -19,6 +20,8 @@ using std::vector;
 
 extern "C" {
     FUN(jobjectArray, getDirectoriesInDirectory)(JNIEnv *env, jobject obj, jstring jdirectory);
+
+    FUN(jobjectArray, getFilesInDirectory)(JNIEnv *env, jobject obj, jstring jdirectory);
 }
 
 #endif //FILEPRELOADERLIBRARY_NATIVE_H

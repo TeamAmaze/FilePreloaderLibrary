@@ -6,4 +6,6 @@ object Native {
 	}
 
 	external fun getDirectoriesInDirectory(directory: String): Array<String>
+
+	external fun getFilesInDirectory(directory: String): Array<String>
 }
