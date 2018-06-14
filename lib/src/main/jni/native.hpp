@@ -1,5 +1,5 @@
-#ifndef FILEPRELOADERLIBRARY_NATIVE_H
-#define FILEPRELOADERLIBRARY_NATIVE_H
+#ifndef FILEPRELOADERLIBRARY_NATIVE_HPP
+#define FILEPRELOADERLIBRARY_NATIVE_HPP
 
 #include <string>
 #include <vector>
@@ -24,4 +24,4 @@ extern "C" {
     FUN(jobjectArray, getFilesInDirectory)(JNIEnv *env, jobject obj, jstring jdirectory);
 }
 
-#endif //FILEPRELOADERLIBRARY_NATIVE_H
+#endif //FILEPRELOADERLIBRARY_NATIVE_HPP

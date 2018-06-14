@@ -1,4 +1,4 @@
-#include "native.h"
+#include "native.hpp"
 
 void directoriesindir(std::vector<std::string>& directories, std::string path) {
     DIR *startdir = opendir(path.data());
