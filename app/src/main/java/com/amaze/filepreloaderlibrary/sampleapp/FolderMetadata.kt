@@ -1,5 +1,6 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.sampleapp
 
+import com.amaze.filepreloaderlibrary.DataContainer
 import java.io.File
 
 class FileMetadata(path: String): DataContainer(path) {

@@ -1,4 +1,4 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.sampleapp
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import com.amaze.filepreloaderlibrary.FilePreloader
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.IOException
