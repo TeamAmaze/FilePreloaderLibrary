@@ -9,7 +9,7 @@ import java.lang.ref.WeakReference
  */
 object FilePreloader {
 
-    var DEBUG = false
+    var DEBUG = true
 
     /**
      * Save a [WeakReference] to every [SpecializedPreloader] created so that [getAllDataLoaded] and

@@ -2,9 +2,8 @@ package com.amaze.filepreloaderlibrary
 
 import android.util.Log
 import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
-import java.util.*
+import java.util.concurrent.PriorityBlockingQueue
 
 /**
 * Basically means call `[ProcessUnit].fetcherFunction` on each of `[ProcessUnit].path`'s files.
@@ -19,13 +18,17 @@ internal data class ProcessUnit<out D: DataContainer>(val path: String, val fetc
  */
 internal data class ProcessedUnit<out D: DataContainer>(val path: String, val metadataObject: D)
 
+internal data class PreloadableUnit<D: DataContainer>(val function: () -> ProcessedUnit<D>, val priority: Int): Comparable<PreloadableUnit<D>> {
+    override fun compareTo(other: PreloadableUnit<D>) = priority.compareTo(other.priority)
+}
+
 /**
  * The maximum allowed elements in [PRELOADED_MAP]
  */
 private const val PRELOADED_MAP_MAXIMUM = 4*10000
 
 /**
- * Singleton charged with writing to [preloadList] and starting the preload
+ * Singleton charged with writing to [preloadPriorityQueue] and starting the preload
  * and, afterwards reading from [preloadedList] and returning the output.
  */
 internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
@@ -43,9 +46,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * 'Load a folder' means that the function `[unit].second` will be called
      * on each file (represented by its path) inside the folder.
      */
-    private val preloadList: MutableList<() -> ProcessedUnit<D>> =
-            Collections.synchronizedList(mutableListOf<() -> ProcessedUnit<D>>())
-    private val preloadListMutex = Mutex()
+    private val preloadPriorityQueue: PriorityBlockingQueue<PreloadableUnit<D>> = PriorityBlockingQueue()
 
     /**
      * Asynchly load every folder inside the path `[unit].first`.
@@ -65,7 +66,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 if (getPreloadMap()[file.path] == null) {
                     val subfiles: Array<String> = Native.getFilesInDirectory(unit.path)
                     for (filename in subfiles) {
-                        addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction))
+                        addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction), PRIORITY_NOW)
                     }
 
                     getPreloadMap()[file.path] = PreloadedFolder(subfiles.size)
@@ -84,7 +85,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                     if (getPreloadMap()[currentPath] == null) {
                         val subfiles: Array<String> = Native.getFilesInDirectory(currentPath)
                         for (filename in subfiles) {
-                            addToProcess(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction))
+                            addToProcess(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction), PRIORITY_FUTURE)
                         }
 
                         getPreloadMap()[currentPath] = PreloadedFolder(subfiles.size)
@@ -102,7 +103,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 if (parentPath != null && getPreloadMap()[parentPath] == null) {
                     val subfiles: Array<String> = Native.getFilesInDirectory(parentPath)
                     subfiles.forEach {
-                        addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction))
+                        addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction), PRIORITY_POSSIBLY)
                     }
 
                     getPreloadMap()[parentPath] = PreloadedFolder(subfiles.size)
@@ -130,9 +131,9 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             val file = KFile(unit.path)
             val fileList = file.list() ?: arrayOf()
 
-            preloadListMutex.withLock {
+            synchronized(preloadPriorityQueue) {
                 for (path in fileList) {
-                    addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.fetcherFunction))
+                    addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.fetcherFunction), PRIORITY_NOW)
                 }
             }
 
@@ -151,17 +152,17 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * Clear everything, all data loaded will be discarded.
      */
     internal fun clear() {
-        preloadList.clear()
+        preloadPriorityQueue.clear()
         getPreloadMap().clear()
         getDeleteQueue().clear()
     }
 
     /**
-     * Add file (represented by [unit]) to the [preloadList] to be preloaded by [work].
+     * Add file (represented by [unit]) to the [preloadPriorityQueue] to be preloaded by [work].
      */
-    private fun addToProcess(path: String, unit: ProcessUnit<D>) {
+    private fun addToProcess(path: String, unit: ProcessUnit<D>, priority: Int) {
         val f: () -> ProcessedUnit<D> = { load(path, unit) }
-        preloadList.add(f)
+        preloadPriorityQueue.add(PreloadableUnit(f, priority))
     }
 
     /**
@@ -190,23 +191,23 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     /**
-     * Calls each function in [preloadList] (removing it).
+     * Calls each function in [preloadPriorityQueue] (removing it).
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
-    private suspend fun work() {
-        preloadListMutex.withLock {
-            preloadList.forEach {
-                val (path, data) = it.invoke()
+    private fun work() {
+        launch {
+            while (preloadPriorityQueue.isNotEmpty()) {
+                val elem = preloadPriorityQueue.poll()
+                val (path, data) = elem.function()
 
                 if (FilePreloader.DEBUG) {
-                    Log.d("FilePreloader.Processor", "Loading from $path: $data")
+                    Log.d("FilePreloader.Processor", "[P${elem.priority}] Loading from $path: $data")
                 }
 
                 val list = getPreloadMap()[path]
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
                 list.add(data)
             }
-            preloadList.clear()
         }
     }
 
