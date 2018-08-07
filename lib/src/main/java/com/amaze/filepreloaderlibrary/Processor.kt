@@ -3,6 +3,7 @@ package com.amaze.filepreloaderlibrary
 import android.util.Log
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.withLock
+import java.io.FileFilter
 import java.util.concurrent.PriorityBlockingQueue
 
 /**
@@ -64,7 +65,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             //Load current folder
             getPreloadMapMutex().withLock {
                 if (getPreloadMap()[file.path] == null) {
-                    val subfiles: Array<String> = Native.getFilesInDirectory(unit.path)
+                    val subfiles: Array<String> = file.list() ?: arrayOf()
                     for (filename in subfiles) {
                         addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction), PRIORITY_NOW)
                     }
@@ -78,12 +79,14 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             }
 
             //Load children folders
-            Native.getDirectoriesInDirectory(unit.path).forEach {
+            file.listFiles(FileFilter {
+                it.isDirectory
+            })?.forEach {
                 getPreloadMapMutex().withLock {
                     val currentPath = unit.path + DIVIDER + it
 
                     if (getPreloadMap()[currentPath] == null) {
-                        val subfiles: Array<String> = Native.getFilesInDirectory(currentPath)
+                        val subfiles: Array<String> = KFile(currentPath).list() ?: arrayOf()
                         for (filename in subfiles) {
                             addToProcess(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction), PRIORITY_FUTURE)
                         }
@@ -101,7 +104,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             getPreloadMapMutex().withLock {
                 val parentPath = file.parent
                 if (parentPath != null && getPreloadMap()[parentPath] == null) {
-                    val subfiles: Array<String> = Native.getFilesInDirectory(parentPath)
+                    val subfiles: Array<String> = KFile(parentPath).list() ?: arrayOf()
                     subfiles.forEach {
                         addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction), PRIORITY_POSSIBLY)
                     }
