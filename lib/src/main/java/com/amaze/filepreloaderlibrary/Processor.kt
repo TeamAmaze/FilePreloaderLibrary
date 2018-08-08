@@ -1,6 +1,5 @@
 package com.amaze.filepreloaderlibrary
 
-import android.util.Log
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.withLock
 import java.io.FileFilter
@@ -189,7 +188,11 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         getPreloadMapMutex().withLock {
             val completeSet = getPreloadMap()[path]
             if (completeSet == null) listener.invoke(null)
-            else completeSet.listener = { listener.invoke(it.toList()) }
+            else completeSet.listener = {
+                listener.invoke(it.toList())
+
+                DebugLog.log("FilePreloader.Complete", "$path is complete!")
+            }
         }
     }
 
@@ -203,9 +206,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 val elem = preloadPriorityQueue.poll()
                 val (path, data) = elem.function()
 
-                if (FilePreloader.DEBUG) {
-                    Log.d("FilePreloader.Processor", "[P${elem.priority}] Loading from $path: $data")
-                }
+                DebugLog.log("FilePreloader.Processor", "[P${elem.priority}] Loading from $path: $data")
 
                 val list = getPreloadMap()[path]
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
