@@ -2,7 +2,6 @@ package com.amaze.filepreloaderlibrary
 
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.sync.withLock
-import java.io.FileFilter
 import java.util.concurrent.PriorityBlockingQueue
 
 /**
@@ -78,9 +77,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
             }
 
             //Load children folders
-            file.listFiles(FileFilter {
-                it.isDirectory
-            })?.forEach {
+            file.listDirectoriesToList()?.forEach {
                 getPreloadMapMutex().withLock {
                     val currentPath = unit.path + DIVIDER + it
 
