@@ -48,9 +48,7 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
 
                 val list = KFile(path).list()?.map {
                     val data = fetcher.process(path + it)
-                    if(FilePreloader.DEBUG) {
-                        Log.w("FilePreloader.Special", "Manually loaded $data")
-                    }
+                    Log.w("FilePreloader.Special", "Manually loaded $data!")
                     return@map data
                 } ?: listOf()
 

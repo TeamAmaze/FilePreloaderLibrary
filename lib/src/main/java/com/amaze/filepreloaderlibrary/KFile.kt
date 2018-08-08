@@ -5,21 +5,40 @@ import java.io.FileFilter
 
 /**
  * This correctly casts some member functions from [File] into nullable.
- * The cost is O(N) for Arrays and Lists and O(1) for single element returns
  */
 class KFile(path: String): File(path) {
 
     override fun list(): Array<String>? = super.list()
 
-    override fun listFiles(): Array<KFile>? {
-        val a: Array<File> = super.listFiles() ?: return null
-        return Array(a.size, { KFile(a[it].path) })
+    /**
+     * @deprecated Use [listFilesToList]
+     */
+    override fun listFiles(): Array<KFile>? = listFilesToList()?.toTypedArray()
+
+    fun listFilesToList(): List<KFile>? {
+        val ss = list() ?: return null
+
+        return ss.map {
+            KFile(it)
+        }
     }
 
-    override fun listFiles(filter: FileFilter): Array<KFile>? {
-        val a: Array<File> = super.listFiles(filter) ?: return null
-        return Array(a.size, { KFile(a[it].path) })
+    /**
+     * @deprecated Use [listFilesToList]
+     */
+    override fun listFiles(filter: FileFilter): Array<KFile>? = listFilesToList(filter)?.toTypedArray()
+
+    fun listFilesToList(filter: FileFilter): List<KFile>? {
+        val ss = list() ?: return null
+
+        return ss.map {
+            KFile(it)
+        }.filter {
+            filter.accept(it)
+        }
     }
+
+    fun listDirectoriesToList() = listFilesToList(FileFilter { it.isDirectory })
 
     override fun getParent(): String? = super.getParent()
 
