@@ -1,8 +1,10 @@
 package com.amaze.filepreloaderlibrary
 
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.sync.withLock
 import java.util.concurrent.PriorityBlockingQueue
+import kotlin.concurrent.thread
+import kotlin.coroutines.experimental.suspendCoroutine
 
 /**
 * Basically means call `[ProcessUnit].fetcherFunction` on each of `[ProcessUnit].path`'s files.
@@ -17,7 +19,7 @@ internal data class ProcessUnit<out D: DataContainer>(val path: String, val fetc
  */
 internal data class ProcessedUnit<out D: DataContainer>(val path: String, val metadataObject: D)
 
-internal data class PreloadableUnit<D: DataContainer>(val function: () -> ProcessedUnit<D>, val priority: Int): Comparable<PreloadableUnit<D>> {
+internal data class PreloadableUnit<D: DataContainer>(val future: Deferred<ProcessedUnit<D>>, val priority: Int): Comparable<PreloadableUnit<D>> {
     override fun compareTo(other: PreloadableUnit<D>) = priority.compareTo(other.priority)
 }
 
@@ -160,7 +162,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * Add file (represented by [unit]) to the [preloadPriorityQueue] to be preloaded by [work].
      */
     private fun addToProcess(path: String, unit: ProcessUnit<D>, priority: Int) {
-        val f: () -> ProcessedUnit<D> = { load(path, unit) }
+        val f = async { load(path, unit) }
         preloadPriorityQueue.add(PreloadableUnit(f, priority))
     }
 
@@ -201,7 +203,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         launch {
             while (preloadPriorityQueue.isNotEmpty()) {
                 val elem = preloadPriorityQueue.poll()
-                val (path, data) = elem.function()
+                val (path, data) = elem.future.await()
 
                 DebugLog.log("FilePreloader.Processor", "[P${elem.priority}] Loading from $path: $data")
 
