@@ -1,4 +1,4 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.datastructures
 
 /**
  * This is a [HashSet] with completeness checks.

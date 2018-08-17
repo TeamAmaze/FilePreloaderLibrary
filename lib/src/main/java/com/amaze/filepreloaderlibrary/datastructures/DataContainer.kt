@@ -1,4 +1,4 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.datastructures
 
 /**
  * This class contains the metadata the user will obtain for each file.

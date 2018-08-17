@@ -1,5 +1,7 @@
 package com.amaze.filepreloaderlibrary
 
+import com.amaze.filepreloaderlibrary.datastructures.*
+import com.amaze.filepreloaderlibrary.utils.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
