@@ -1,9 +1,6 @@
 package com.amaze.filepreloaderlibrary
 
 /**
- * This class is a more legible version of `f: (String) -> D` that can be called with [process]
- * instead of invoke.
+ * This class is a more legible version of `f: (String) -> D`
  */
-class FetcherFunction<out D: DataContainer> (private val f: (String) -> D) {
-    internal fun process(path: String) = f(path)
-}
+typealias FetcherFunction<D> = (String) -> D

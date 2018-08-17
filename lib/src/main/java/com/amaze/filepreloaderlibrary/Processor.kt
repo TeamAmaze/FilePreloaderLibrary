@@ -231,7 +231,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * This loads every folder.
      */
     private fun load(path: String, unit: ProcessUnit<D>): ProcessedUnit<D> {
-        return ProcessedUnit(path, unit.fetcherFunction.process(unit.path))
+        return ProcessedUnit(path, unit.fetcherFunction(unit.path))
     }
 
     /**

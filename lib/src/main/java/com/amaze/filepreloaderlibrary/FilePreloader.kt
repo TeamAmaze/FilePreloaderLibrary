@@ -24,8 +24,8 @@ object FilePreloader {
      *
      * @see [PreloadedManager].
      */
-    inline fun <reified D: DataContainer>with(noinline f: (String) -> D): SpecializedPreloader<D> {
-        val v = SpecializedPreloader(D::class.java, FetcherFunction(f))
+    inline fun <reified D: DataContainer>with(noinline f: FetcherFunction<D>): SpecializedPreloader<D> {
+        val v = SpecializedPreloader(D::class.java, f)
         weakList.add(WeakReference(v))
         return v
     }
