@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
             adapter.addAll(fileList)
 
-            timeView.text = "${timeDelta}ms\n------------ FILES IN ${externalDir.absolutePath} ------------"
+            timeView.text = "${timeDelta}ms\n---- FILES IN ${externalDir.absolutePath} (${it.size}) ----"
         }
     }
 
