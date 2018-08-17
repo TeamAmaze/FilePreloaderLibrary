@@ -47,7 +47,7 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
                 if (!path.endsWith(DIVIDER)) path += DIVIDER
 
                 val list = KFile(path).list()?.map {
-                    val data = fetcher.process(path + it)
+                    val data = fetcher(path + it)
                     Log.w("FilePreloader.Special", "Manually loaded $data!")
                     return@map data
                 } ?: listOf()
@@ -62,5 +62,5 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
      * It's usage is not recommended as the [Processor] already has a more efficient cleaning
      * algorithm (see [Processor.deletionQueue]).
      */
-    internal fun clear() = processor.clear()
+    internal suspend fun clear() = processor.clear()
 }
