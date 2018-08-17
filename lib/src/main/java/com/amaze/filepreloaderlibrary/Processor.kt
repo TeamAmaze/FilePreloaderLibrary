@@ -2,6 +2,7 @@ package com.amaze.filepreloaderlibrary
 
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.sync.withLock
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
 * Basically means call `[ProcessUnit].fetcherFunction` on each of `[ProcessUnit].path`'s files.
@@ -41,6 +42,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * on each file (represented by its path) inside the folder.
      */
     private val preloadPriorityQueue: UniquePriorityBlockingQueue<PreloadableUnit<D>> = UniquePriorityBlockingQueue()
+
+    private val isWorking = AtomicBoolean(false)
 
     /**
      * Asynchly load every folder inside the path `[unit].first`.
@@ -195,6 +198,9 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
     private fun work() {
+        if(isWorking.get()) return
+        isWorking.set(true)
+
         launch {
             while (preloadPriorityQueue.isNotEmpty()) {
                 val elem = preloadPriorityQueue.poll() ?: throw IllegalStateException("Polled element cannot be null!")
@@ -206,6 +212,8 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
                 list.add(data)
             }
+
+            isWorking.set(false)
         }
     }
 
