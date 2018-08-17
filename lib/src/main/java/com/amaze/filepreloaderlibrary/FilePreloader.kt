@@ -49,8 +49,10 @@ object FilePreloader {
      * Clear everything, all metadata loaded will be discarded.
      */
     fun cleanUp() {
-        weakList.forEach {
-            it.get()?.clear()
+        launch {
+            weakList.forEach {
+                it.get()?.clear()
+            }
         }
     }
 }
