@@ -104,7 +104,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 if (parentPath != null && getPreloadMap()[parentPath] == null) {
                     val subfiles: Array<String> = KFile(parentPath).list() ?: arrayOf()
                     subfiles.forEach {
-                        addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction), PRIORITY_POSSIBLY)
+                        addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction), PRIORITY_FUTURE)
                     }
 
                     getPreloadMap()[parentPath] = PreloadedFolder(subfiles.size)
@@ -162,7 +162,9 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * Add file (represented by [unit]) to the [preloadPriorityQueue] to be preloaded by [work].
      */
     private fun addToProcess(path: String, unit: ProcessUnit<D>, priority: Int) {
-        val f = async { load(path, unit) }
+        val start = if(priority == PRIORITY_NOW) CoroutineStart.DEFAULT else CoroutineStart.LAZY
+
+        val f = async(start = start) { load(path, unit) }
         preloadPriorityQueue.add(PreloadableUnit(f, priority))
     }
 
