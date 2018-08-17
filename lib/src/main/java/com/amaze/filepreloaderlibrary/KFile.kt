@@ -6,7 +6,10 @@ import java.io.FileFilter
 /**
  * This correctly casts some member functions from [File] into nullable.
  */
-class KFile(path: String): File(path) {
+class KFile: File {
+
+    constructor(path: String): super(path) {}
+    constructor(parentPath: String, path: String): super(parentPath, path) { }
 
     override fun list(): Array<String>? = super.list()
 
@@ -26,19 +29,19 @@ class KFile(path: String): File(path) {
     /**
      * @deprecated Use [listFilesToList]
      */
-    override fun listFiles(filter: FileFilter): Array<KFile>? = listFilesToList(filter)?.toTypedArray()
+    override fun listFiles(filter: FileFilter): Array<KFile>? = listFilesToList { filter.accept(it as File) }?.toTypedArray()
 
-    fun listFilesToList(filter: FileFilter): List<KFile>? {
+    fun listFilesToList(filter: (KFile) -> Boolean): List<KFile>? {
         val ss = list() ?: return null
 
         return ss.map {
-            KFile(it)
+            KFile(absolutePath, it)
         }.filter {
-            filter.accept(it)
+            filter(it)
         }
     }
 
-    fun listDirectoriesToList() = listFilesToList(FileFilter { it.isDirectory })
+    fun listDirectoriesToList() = listFilesToList { it.isDirectory }
 
     override fun getParent(): String? = super.getParent()
 
