@@ -1,4 +1,6 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.utils
+
+import com.amaze.filepreloaderlibrary.datastructures.PreloadedFolder
 
 /**
  * Contains a hash map linking paths to [PreloadedFolder]s.

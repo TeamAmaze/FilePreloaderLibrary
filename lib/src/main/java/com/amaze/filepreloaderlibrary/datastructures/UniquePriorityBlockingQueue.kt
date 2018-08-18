@@ -1,4 +1,4 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.datastructures
 
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock

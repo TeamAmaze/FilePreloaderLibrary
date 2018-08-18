@@ -2,6 +2,10 @@ package com.amaze.filepreloaderlibrary
 
 import android.app.Activity
 import android.util.Log
+import com.amaze.filepreloaderlibrary.datastructures.DataContainer
+import com.amaze.filepreloaderlibrary.datastructures.FetcherFunction
+import com.amaze.filepreloaderlibrary.utils.DIVIDER
+import com.amaze.filepreloaderlibrary.utils.KFile
 import kotlinx.coroutines.experimental.launch
 
 /**
@@ -9,7 +13,7 @@ import kotlinx.coroutines.experimental.launch
  * the actual load.
  */
 class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
-                                                 private val fetcher: FetcherFunction<D>) {
+                                                                                               private val fetcher: FetcherFunction<D>) {
     private val processor: Processor<D> = Processor(clazz)
 
     /**

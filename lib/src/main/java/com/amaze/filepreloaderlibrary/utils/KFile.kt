@@ -1,4 +1,4 @@
-package com.amaze.filepreloaderlibrary
+package com.amaze.filepreloaderlibrary.utils
 
 import java.io.File
 import java.io.FileFilter

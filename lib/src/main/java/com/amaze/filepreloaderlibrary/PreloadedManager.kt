@@ -3,6 +3,9 @@ package com.amaze.filepreloaderlibrary
 import com.amaze.filepreloaderlibrary.PreloadedManager.ProcessorData
 import com.amaze.filepreloaderlibrary.PreloadedManager.preloadedObjectMutexMap
 import com.amaze.filepreloaderlibrary.PreloadedManager.preloadedObjectsMap
+import com.amaze.filepreloaderlibrary.datastructures.DataContainer
+import com.amaze.filepreloaderlibrary.datastructures.UniqueQueue
+import com.amaze.filepreloaderlibrary.utils.PreloadedFoldersMap
 import kotlinx.coroutines.experimental.sync.Mutex
 import java.util.*
 
@@ -47,6 +50,6 @@ object PreloadedManager {
     }
 
     data class ProcessorData<D: DataContainer>(val deleteQueue: UniqueQueue,
-                                               val preloadedFoldersMap: PreloadedFoldersMap<D>)
+                                                                                             val preloadedFoldersMap: PreloadedFoldersMap<D>)
 
 }

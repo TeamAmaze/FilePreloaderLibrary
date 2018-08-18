@@ -1,6 +1,8 @@
 package com.amaze.filepreloaderlibrary
 
 import android.app.Activity
+import com.amaze.filepreloaderlibrary.datastructures.DataContainer
+import com.amaze.filepreloaderlibrary.datastructures.FetcherFunction
 import kotlinx.coroutines.experimental.launch
 import java.lang.ref.WeakReference
 
