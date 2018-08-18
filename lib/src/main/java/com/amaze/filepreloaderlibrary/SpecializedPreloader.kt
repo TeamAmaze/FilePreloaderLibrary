@@ -9,25 +9,25 @@ import com.amaze.filepreloaderlibrary.utils.KFile
 import kotlinx.coroutines.experimental.launch
 
 /**
- * This class deals with preloading files for a given type [D], it uses [processor] to perform
+ * This class deals with preloading files for a given type [D], it uses [loader] to perform
  * the actual load.
  */
 class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
-                                                                                               private val fetcher: FetcherFunction<D>) {
-    private val processor: Processor<D> = Processor(clazz)
+                                                 private val fetcher: FetcherFunction<D>) {
+    private val loader: Loader<D> = Loader(clazz)
 
     /**
      * Asynchly preload every subfolder in this [path].
      */
     fun preloadFrom(path: String) {
-        processor.workFrom(ProcessUnit(path, fetcher))
+        loader.loadFrom(ProcessUnit(path, fetcher))
     }
 
     /**
      * Asynchly preload folder (denoted by its [path]),
      */
     fun preload(path: String) {
-        processor.work(ProcessUnit(path, fetcher))
+        loader.loadFolder(ProcessUnit(path, fetcher))
     }
 
     /**
@@ -35,13 +35,13 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
      */
     fun load(activity: Activity, path: String, getList: (List<D>) -> Unit) {
         launch {
-            val t: Pair<Boolean, List<DataContainer>>? = processor.getLoaded(path)
+            val t: Pair<Boolean, List<DataContainer>>? = loader.getLoaded(path)
 
             if (t != null) {
                 if(t.first) {
                     activity.runOnUiThread { getList(t.second as List<D>) }
                 } else {
-                    processor.setCompletionListener(path) {
+                    loader.setCompletionListener(path) {
                         it ?: throw NullPointerException()
                         activity.runOnUiThread { getList(it) }
                     }
@@ -66,5 +66,5 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
      * It's usage is not recommended as the [Processor] already has a more efficient cleaning
      * algorithm (see [Processor.deletionQueue]).
      */
-    internal suspend fun clear() = processor.clear()
+    internal suspend fun clear() = loader.clear()
 }

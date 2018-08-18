@@ -50,6 +50,37 @@ object PreloadedManager {
     }
 
     data class ProcessorData<D: DataContainer>(val deleteQueue: UniqueQueue,
-                                                                                             val preloadedFoldersMap: PreloadedFoldersMap<D>)
+                                               val preloadedFoldersMap: PreloadedFoldersMap<D>)
 
+
+    /**
+     * Gets the map for [D].
+     *
+     * @see PreloadedManager
+     */
+    internal fun <D: DataContainer> getPreloadMap(clazz: Class<D>): PreloadedFoldersMap<D> {
+        val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+        return data.preloadedFoldersMap
+    }
+
+    /**
+     * Gets the deleteQueue for [D].
+     *
+     * Thread safe.
+     * If entries must be deleted from [getPreloadMap] in the order given by [deletionQueue].remove().
+     *
+     * @see PreloadedManager
+     */
+    internal fun getDeleteQueue(clazz: Class<out DataContainer>): UniqueQueue {
+        val data = PreloadedManager.get(clazz) ?: throw NullPointerException("No map for $clazz!")
+        return data.deleteQueue
+    }
+
+    /**
+     * Gets the mutex for [getPreloadMap] for [D].
+     *
+     * @see PreloadedManager
+     */
+    internal fun getPreloadMapMutex(clazz: Class<out DataContainer>) =
+            PreloadedManager.getMutex(clazz) ?: throw NullPointerException("No Mutex for $clazz!")
 }
