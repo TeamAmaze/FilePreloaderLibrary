@@ -38,6 +38,10 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         loadFolder(getStartingFile().absolutePath)
     }
 
+    override fun onBackPressed() {
+        loadFolder(getStartingFile().absolutePath)
+    }
+
     override fun onItemClick(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         if(!showingLoaded) pathList[position]?.let { loadFolder(it) }
     }
@@ -72,9 +76,18 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         }
     }
 
-    private fun getStartingFile():File {
-        var externalDir: File = Environment.getExternalStorageDirectory() ?: throw IOException("Failed to read files")
-        externalDir = File(externalDir.path)
+
+
+    private fun getStartingFile(): File {
+        lateinit var externalDir: File
+
+        if(isEmulator()) {
+            externalDir = File("/sdcard/")
+        } else {
+            val externalFile = Environment.getExternalStorageDirectory() ?: throw IOException("Failed to read files")
+            externalDir = File(externalFile.path)
+        }
+
         externalDir.setReadable(true)
         return externalDir
     }
