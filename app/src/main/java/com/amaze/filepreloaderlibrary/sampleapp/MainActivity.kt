@@ -38,6 +38,10 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         loadFolder(getStartingFile().absolutePath)
     }
 
+    override fun onBackPressed() {
+        loadFolder(getStartingFile().absolutePath)
+    }
+
     override fun onItemClick(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         if(!showingLoaded) pathList[position]?.let { loadFolder(it) }
     }
