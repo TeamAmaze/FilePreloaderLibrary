@@ -6,8 +6,8 @@ import java.util.*
 import java.util.concurrent.PriorityBlockingQueue
 import kotlin.collections.HashSet
 
-internal class UniquePriorityBlockingQueue<E: PreloadableUnit<*>> {
-    private val preloadPriorityQueue: PriorityBlockingQueue<E> = PriorityBlockingQueue()
+internal class UniquePriorityQueue<E: PreloadableUnit<*>> {
+    private val preloadPriorityQueue: PriorityQueue<E> = PriorityQueue()
     private val containedCheck = Collections.synchronizedSet(HashSet<E>())
     private val mutex = Mutex()
 
@@ -18,6 +18,7 @@ internal class UniquePriorityBlockingQueue<E: PreloadableUnit<*>> {
                     it.future.cancel()
                 }
             }
+            preloadPriorityQueue.remove(element)
         } else {
             containedCheck.add(element);
         }

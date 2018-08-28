@@ -1,11 +1,10 @@
 package com.amaze.filepreloaderlibrary
 
-import com.amaze.filepreloaderlibrary.PreloadedManager.getDeleteQueue
 import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMap
-import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMapMutex
 import com.amaze.filepreloaderlibrary.datastructures.*
 import com.amaze.filepreloaderlibrary.utils.*
 import kotlinx.coroutines.GlobalScope
+
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -41,7 +40,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
      * 'Load a folder' means that the function `[unit].second` will be called
      * on each file (represented by its path) inside the folder.
      */
-    private val preloadPriorityQueue: UniquePriorityBlockingQueue<PreloadableUnit<D>> = UniquePriorityBlockingQueue()
+    private val preloadPriorityQueue: UniquePriorityQueue<PreloadableUnit<D>> = UniquePriorityQueue()
 
     private val isWorking = AtomicBoolean(false)
 
