@@ -32,9 +32,9 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
      * on each file (represented by its path) inside the folder.
      */
     internal fun loadFrom(unit: ProcessUnit<D>) {
-        val producer = GlobalScope.produce {
-            val file = KFile(unit.path)
+        val file = KFile(unit.path)
 
+        processor.workHighPriority(GlobalScope.produce {
             //Load current folder
             getPreloadMapMutex(clazz).withLock {
                 if (getPreloadMap(clazz)[file.path] == null) {
@@ -51,6 +51,10 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
                 }
             }
 
+            close()
+        })
+
+        processor.workLowPriority(GlobalScope.produce {
             //Load children folders
             file.listDirectoriesToList()?.forEach {
                 getPreloadMapMutex(clazz).withLock {
@@ -88,9 +92,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
             }
 
             close()
-        }
-
-        processor.work(producer)
+        })
     }
 
     /**
@@ -115,7 +117,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
                 getDeleteQueue(clazz).add(file.path)
             }
 
-            processor.work(preloadableFiles)
+            processor.workHighPriority(preloadableFiles)
         }
     }
 
