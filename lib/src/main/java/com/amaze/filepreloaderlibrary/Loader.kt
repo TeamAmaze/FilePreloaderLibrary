@@ -10,6 +10,7 @@ import com.amaze.filepreloaderlibrary.utils.*
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 
@@ -31,23 +32,22 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
      * on each file (represented by its path) inside the folder.
      */
     internal fun loadFrom(unit: ProcessUnit<D>) {
-        GlobalScope.launch {
-            var somethingAddedToPreload = false
+        val producer = GlobalScope.produce {
             val file = KFile(unit.path)
 
             //Load current folder
             getPreloadMapMutex(clazz).withLock {
                 if (getPreloadMap(clazz)[file.path] == null) {
                     val subfiles: Array<String> = file.list() ?: arrayOf()
-                    for (filename in subfiles) {
-                        addToProcess(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction), PRIORITY_NOW)
-                    }
 
                     getPreloadMap(clazz)[file.path] = PreloadedFolder(subfiles.size)
                     if (getPreloadMap(clazz).size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                     getDeleteQueue(clazz).add(file.path)
 
-                    somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
+
+                    for (filename in subfiles) {
+                        send(toPreloadable(file.path, ProcessUnit(file.path + DIVIDER + filename, unit.fetcherFunction), PRIORITY_NOW))
+                    }
                 }
             }
 
@@ -58,40 +58,39 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
 
                     if (getPreloadMap(clazz)[currentPath] == null) {
                         val subfiles: Array<String> = KFile(currentPath).list() ?: arrayOf()
-                        for (filename in subfiles) {
-                            addToProcess(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction), PRIORITY_FUTURE)
-                        }
 
                         getPreloadMap(clazz)[currentPath] = PreloadedFolder(subfiles.size)
                         if (getPreloadMap(clazz).size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                         getDeleteQueue(clazz).add(currentPath)
 
-                        somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
+                        for (filename in subfiles) {
+                            send(toPreloadable(currentPath, ProcessUnit(currentPath + DIVIDER + filename, unit.fetcherFunction), PRIORITY_FUTURE))
+                        }
                     }
                 }
             }
+
 
             //Load parent folder
             getPreloadMapMutex(clazz).withLock {
                 val parentPath = file.parent
                 if (parentPath != null && getPreloadMap(clazz)[parentPath] == null) {
                     val subfiles: Array<String> = KFile(parentPath).list() ?: arrayOf()
-                    subfiles.forEach {
-                        addToProcess(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction), PRIORITY_FUTURE)
-                    }
 
                     getPreloadMap(clazz)[parentPath] = PreloadedFolder(subfiles.size)
                     if (getPreloadMap(clazz).size > PRELOADED_MAP_MAXIMUM) cleanOldEntries()
                     getDeleteQueue(clazz).add(parentPath)
 
-                    somethingAddedToPreload = somethingAddedToPreload || subfiles.isNotEmpty()
+                    subfiles.forEach {
+                        send(toPreloadable(parentPath, ProcessUnit(parentPath + DIVIDER + it, unit.fetcherFunction), PRIORITY_FUTURE))
+                    }
                 }
             }
 
-            if(somethingAddedToPreload) {
-                processor.work()
-            }
+            close()
         }
+
+        processor.work(producer)
     }
 
     /**
@@ -105,8 +104,10 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
             val file = KFile(unit.path)
             val fileList = file.list() ?: arrayOf()
 
-            for (path in fileList) {
-                addToProcess(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.fetcherFunction), PRIORITY_NOW)
+            val preloadableFiles = produce {
+                for (path in fileList) {
+                    send(toPreloadable(file.path, ProcessUnit(file.absolutePath + DIVIDER + path, unit.fetcherFunction), PRIORITY_NOW))
+                }
             }
 
             getPreloadMapMutex(clazz).withLock {
@@ -114,9 +115,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
                 getDeleteQueue(clazz).add(file.path)
             }
 
-            if (fileList.isNotEmpty()) {
-                processor.work()
-            }
+            processor.work(preloadableFiles)
         }
     }
 
@@ -134,7 +133,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
     /**
      * Clear everything, all data loaded will be discarded.
      */
-    internal suspend fun clear() {
+    internal fun clear() {
         processor.clear()
         getPreloadMap(clazz).clear()
         getDeleteQueue(clazz).clear()
@@ -143,11 +142,11 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
     /**
      * Add file (represented by [unit]) to the [preloadPriorityQueue] to be preloaded by [loadFolder].
      */
-    private suspend fun addToProcess(path: String, unit: ProcessUnit<D>, priority: Int) {
+    private fun toPreloadable(path: String, unit: ProcessUnit<D>, priority: Int): PreloadableUnit<D> {
         val start = if(priority == PRIORITY_NOW) CoroutineStart.DEFAULT else CoroutineStart.LAZY
 
         val f = GlobalScope.async(start = start) { ProcessedUnit(path, unit.fetcherFunction(unit.path)) }
-        processor.add(PreloadableUnit(f, priority, unit.path.hashCode()))
+        return PreloadableUnit(f, priority)
     }
 
     /**

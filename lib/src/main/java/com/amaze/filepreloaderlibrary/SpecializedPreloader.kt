@@ -67,5 +67,5 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
      * It's usage is not recommended as the [Processor] already has a more efficient cleaning
      * algorithm (see [Processor.deletionQueue]).
      */
-    internal suspend fun clear() = loader.clear()
+    internal fun clear() = loader.clear()
 }

@@ -4,9 +4,12 @@ import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMap
 import com.amaze.filepreloaderlibrary.datastructures.*
 import com.amaze.filepreloaderlibrary.utils.*
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.ReceiveChannel
 
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.*
 
 /**
 * Basically means call `[ProcessUnit].fetcherFunction` on each of `[ProcessUnit].path`'s files.
@@ -33,28 +36,16 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         }
     }
 
-    /**
-     * Thread safe.
-     * All the callable executions to load all the folders.
-     *
-     * 'Load a folder' means that the function `[unit].second` will be called
-     * on each file (represented by its path) inside the folder.
-     */
-    private val preloadPriorityQueue: UniquePriorityQueue<PreloadableUnit<D>> = UniquePriorityQueue()
-
-    private val isWorking = AtomicBoolean(false)
+    private val ranCoroutines = Collections.synchronizedSet(hashSetOf<Job>())
 
     /**
      * Calls each function in [preloadPriorityQueue] (removing it).
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
-    internal fun work() {
-        if(isWorking.get()) return
-        isWorking.set(true)
-
-        GlobalScope.launch {
-            while (preloadPriorityQueue.isNotEmpty()) {
-                val elem = preloadPriorityQueue.poll() ?: throw IllegalStateException("Polled element cannot be null!")
+    internal fun work(producer: ReceiveChannel<PreloadableUnit<D>?>) {
+        val job = GlobalScope.launch {
+            for (elem in producer) {
+                elem ?: throw IllegalStateException("Polled element cannot be null!")
                 val (path, data) = elem.future.await()
 
                 DebugLog.log("FilePreloader.Processor", "[P${elem.priority}] Loading from $path: $data")
@@ -63,20 +54,23 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                         ?: throw IllegalStateException("A list has been deleted before elements were added. We are VERY out of memory!")
                 list.add(data)
             }
+        }
 
-            isWorking.set(false)
+        ranCoroutines.add(job)
+
+        job.invokeOnCompletion {
+            ranCoroutines.remove(job)
         }
     }
 
-    internal suspend fun add(element: PreloadableUnit<D>) {
-        preloadPriorityQueue.add(element)
-    }
+    fun clear() {
+        GlobalScope.launch {
+            ranCoroutines.forEach {
+                it.cancelAndJoin()
+            }
 
-    /**
-     * Clear everything, all data loaded will be discarded.
-     */
-    internal suspend fun clear() {
-        preloadPriorityQueue.clear()
+            ranCoroutines.clear()
+        }
     }
 
 }
