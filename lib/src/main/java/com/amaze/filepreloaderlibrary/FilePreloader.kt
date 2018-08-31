@@ -33,6 +33,17 @@ object FilePreloader {
     }
 
     /**
+     * For compatibity with Java
+     *
+     * @see [with].
+     */
+    fun <D: DataContainer>with(clazz: Class<D>, f: FetcherFunction<D>): SpecializedPreloader<D> {
+        val v = SpecializedPreloader(clazz, f)
+        weakList.add(WeakReference(v))
+        return v
+    }
+
+    /**
      * *ONLY USE FOR DEBUGGING*
      * Get all the loaded data, this will load the data in the current thread if it's not loaded.
      */
