@@ -1,6 +1,6 @@
 # File Preloader Library
 
-<img src="Logotype primary horizontal.png" width="60%" height="60%" />
+<img src="Logotype primary horizontal.svg" width="60%" height="60%" />
 
 README made with [makeareadme](https://www.makeareadme.com/).
 
