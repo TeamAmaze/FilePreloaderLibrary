@@ -6,7 +6,7 @@ import com.amaze.filepreloaderlibrary.PreloadedManager.preloadedObjectsMap
 import com.amaze.filepreloaderlibrary.datastructures.DataContainer
 import com.amaze.filepreloaderlibrary.datastructures.UniqueQueue
 import com.amaze.filepreloaderlibrary.utils.PreloadedFoldersMap
-import kotlinx.coroutines.experimental.sync.Mutex
+import kotlinx.coroutines.sync.Mutex
 import java.util.*
 
 /**

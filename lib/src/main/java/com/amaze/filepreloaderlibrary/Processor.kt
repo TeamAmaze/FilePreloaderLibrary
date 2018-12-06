@@ -5,8 +5,8 @@ import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMap
 import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMapMutex
 import com.amaze.filepreloaderlibrary.datastructures.*
 import com.amaze.filepreloaderlibrary.utils.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.sync.withLock
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -53,7 +53,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         if(isWorking.get()) return
         isWorking.set(true)
 
-        launch {
+        GlobalScope.launch {
             while (preloadPriorityQueue.isNotEmpty()) {
                 val elem = preloadPriorityQueue.poll() ?: throw IllegalStateException("Polled element cannot be null!")
                 val (path, data) = elem.future.await()

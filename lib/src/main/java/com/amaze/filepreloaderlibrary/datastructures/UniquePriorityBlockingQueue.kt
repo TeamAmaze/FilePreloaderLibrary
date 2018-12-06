@@ -1,7 +1,7 @@
 package com.amaze.filepreloaderlibrary.datastructures
 
-import kotlinx.coroutines.experimental.sync.Mutex
-import kotlinx.coroutines.experimental.sync.withLock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.*
 import java.util.concurrent.PriorityBlockingQueue
 import kotlin.collections.HashSet

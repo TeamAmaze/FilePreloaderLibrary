@@ -3,7 +3,8 @@ package com.amaze.filepreloaderlibrary
 import android.app.Activity
 import com.amaze.filepreloaderlibrary.datastructures.DataContainer
 import com.amaze.filepreloaderlibrary.datastructures.FetcherFunction
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
 /**
@@ -48,7 +49,7 @@ object FilePreloader {
      * Get all the loaded data, this will load the data in the current thread if it's not loaded.
      */
     fun getAllDataLoaded(activity: Activity, getList: (List<DataContainer>?) -> Unit) {
-        launch {
+        GlobalScope.launch {
             val preloaded = PreloadedManager.getAllLoaded()
 
             activity.runOnUiThread {
@@ -62,7 +63,7 @@ object FilePreloader {
      * Clear everything, all metadata loaded will be discarded.
      */
     fun cleanUp() {
-        launch {
+        GlobalScope.launch {
             weakList.forEach {
                 it.get()?.clear()
             }
