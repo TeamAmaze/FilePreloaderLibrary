@@ -7,10 +7,11 @@ import com.amaze.filepreloaderlibrary.datastructures.DataContainer
 import com.amaze.filepreloaderlibrary.datastructures.PreloadableUnit
 import com.amaze.filepreloaderlibrary.datastructures.PreloadedFolder
 import com.amaze.filepreloaderlibrary.utils.*
-import kotlinx.coroutines.experimental.CoroutineStart
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.sync.withLock
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The maximum allowed elements in [PRELOADED_MAP]
@@ -30,7 +31,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
      * on each file (represented by its path) inside the folder.
      */
     internal fun loadFrom(unit: ProcessUnit<D>) {
-        launch {
+        GlobalScope.launch {
             var somethingAddedToPreload = false
             val file = KFile(unit.path)
 
@@ -100,7 +101,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
      * on each file (represented by its path) inside the folder.
      */
     internal fun loadFolder(unit: ProcessUnit<D>) {
-        launch {
+        GlobalScope.launch {
             val file = KFile(unit.path)
             val fileList = file.list() ?: arrayOf()
 
@@ -145,7 +146,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
     private suspend fun addToProcess(path: String, unit: ProcessUnit<D>, priority: Int) {
         val start = if(priority == PRIORITY_NOW) CoroutineStart.DEFAULT else CoroutineStart.LAZY
 
-        val f = async(start = start) { ProcessedUnit(path, unit.fetcherFunction(unit.path)) }
+        val f = GlobalScope.async(start = start) { ProcessedUnit(path, unit.fetcherFunction(unit.path)) }
         processor.add(PreloadableUnit(f, priority, unit.path.hashCode()))
     }
 

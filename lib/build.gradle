@@ -31,7 +31,7 @@ android {
 }
 
 ext {
-    kotlinxVersion = "0.24.0"
+    kotlinxVersion = "1.0.1"
 }
 
 dependencies {
