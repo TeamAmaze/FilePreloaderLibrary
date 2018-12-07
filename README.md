@@ -1,5 +1,8 @@
 # File Preloader Library
-<img src="image/Logotype Secondary Vertikal/Logotype Secondary Vertical.png" data-canonical-src="image/Logotype Secondary Vertikal/Logotype Secondary Vertical.png" height="350" />
+
+<p align="center">
+    <img src="static/logo.png" data-canonical-src="static/logo.png"/>
+</p>
 
 README made with [makeareadme](https://www.makeareadme.com/).
 
