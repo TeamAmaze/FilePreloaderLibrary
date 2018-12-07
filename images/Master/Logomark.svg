@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="210mm" height="297mm" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 21000 29700"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .fil1 {fill:#2196F3}
+    .fil0 {fill:#40C4FF}
+    .fil2 {fill:#FFA000}
+    .fil8 {fill:#FFB300}
+    .fil3 {fill:#FFC107}
+    .fil9 {fill:#FFCA28}
+    .fil4 {fill:#FFD54F}
+    .fil5 {fill:#FFE082}
+    .fil6 {fill:#FFECB3}
+    .fil7 {fill:#FFF8E1}
+   ]]>
+  </style>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <path class="fil0" d="M9638 12669l401 0c208,0 382,145 422,336l410 0c474,0 862,377 862,839l0 0c0,461 -388,839 -862,839l-802 0c-474,0 -862,-378 -862,-839l0 0c0,-282 0,-491 0,-755l0 0c0,-231 194,-420 431,-420z"/>
+  <rect class="fil1" x="9347" y="13145" width="2245" height="1398" rx="766" ry="699"/>
+  <path class="fil2" d="M10521 13426c94,-84 214,-134 340,-141l0 129c-95,7 -181,45 -249,103l-91 -91z"/>
+  <path class="fil3" d="M10475 14216c-84,-94 -135,-214 -142,-340l131 0c7,95 44,181 102,248l-91 92z"/>
+  <path class="fil4" d="M11265 14262c-94,83 -214,133 -340,140l0 -129c94,-7 181,-45 248,-103l92 92z"/>
+  <path class="fil5" d="M11451 13876c-7,126 -57,246 -140,340l-92 -92c58,-67 96,-154 103,-248l129 0z"/>
+  <path class="fil6" d="M11310 13471c84,95 134,214 141,340l-129 0c-7,-94 -45,-180 -103,-248l91 -92z"/>
+  <path class="fil7" d="M10925 13285c126,7 246,57 340,141l-92 91c-67,-58 -154,-96 -248,-103l0 -129z"/>
+  <path class="fil8" d="M10475 13471c-84,95 -134,214 -141,340l130 0c7,-94 44,-180 102,-248l-91 -92z"/>
+  <path class="fil9" d="M10521 14262c94,83 214,133 340,140l0 -129c-95,-7 -181,-45 -249,-103l-91 92z"/>
+ </g>
+</svg>
