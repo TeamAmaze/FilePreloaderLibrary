@@ -1,4 +1,9 @@
 # File Preloader Library
+
+<p align="center">
+    <img src="static/logo.png" data-canonical-src="static/logo.png"/>
+</p>
+
 README made with [makeareadme](https://www.makeareadme.com/).
 
 *Loading takes time,  
