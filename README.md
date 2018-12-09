@@ -4,8 +4,6 @@
     <img src="static/logo.png" data-canonical-src="static/logo.png"/>
 </p>
 
-README made with [makeareadme](https://www.makeareadme.com/).
-
 *Loading takes time,  
 Caching takes space,  
 Preloading takes neither!*
@@ -67,6 +65,7 @@ Please make sure to update tests as appropriate.
 Authors
 ---
 - Emmanuel Messulam
+- README made with [makeareadme](https://www.makeareadme.com/) by Danny Guo | 郭亚东.
 
 License:
 ---
