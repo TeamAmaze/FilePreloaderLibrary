@@ -1,19 +1,19 @@
 package com.amaze.filepreloaderlibrary
 
-import com.amaze.filepreloaderlibrary.PreloadedManager.getDeleteQueue
 import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMap
-import com.amaze.filepreloaderlibrary.PreloadedManager.getPreloadMapMutex
 import com.amaze.filepreloaderlibrary.datastructures.*
 import com.amaze.filepreloaderlibrary.utils.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.ReceiveChannel
+
+import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
 * Basically means call `[ProcessUnit].fetcherFunction` on each of `[ProcessUnit].path`'s files.
 * This is done asynchly.
 *
-* @see Processor.work
+* @see Processor.workHighPriority
 */
 internal data class ProcessUnit<out D: DataContainer>(val path: String, val fetcherFunction: FetcherFunction<D>)
 
@@ -34,28 +34,33 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
         }
     }
 
-    /**
-     * Thread safe.
-     * All the callable executions to load all the folders.
-     *
-     * 'Load a folder' means that the function `[unit].second` will be called
-     * on each file (represented by its path) inside the folder.
-     */
-    private val preloadPriorityQueue: UniquePriorityBlockingQueue<PreloadableUnit<D>> = UniquePriorityBlockingQueue()
-
-    private val isWorking = AtomicBoolean(false)
+    private val ranCoroutines = Collections.synchronizedSet(hashSetOf<Job>())
+    private val workingWithHighPriority = AtomicInteger(0)
 
     /**
      * Calls each function in [preloadPriorityQueue] (removing it).
      * Then adds the result [(path, data)] to `[getPreloadMap].get(path)`.
      */
-    internal fun work() {
-        if(isWorking.get()) return
-        isWorking.set(true)
+    internal fun workHighPriority(producer: ReceiveChannel<PreloadableUnit<D>?>) {
+        work(producer, {
+            workingWithHighPriority.incrementAndGet()
+        }) {
+            workingWithHighPriority.decrementAndGet()
+        }
+    }
 
-        GlobalScope.launch {
-            while (preloadPriorityQueue.isNotEmpty()) {
-                val elem = preloadPriorityQueue.poll() ?: throw IllegalStateException("Polled element cannot be null!")
+    internal fun workLowPriority(producer: ReceiveChannel<PreloadableUnit<D>?>) {
+        work(producer, {
+            while (workingWithHighPriority.get() != 0) yield()
+        })
+    }
+
+    private fun work(producer: ReceiveChannel<PreloadableUnit<D>?>, onStart: suspend () -> Unit, onEnd: suspend () -> Unit  = {}) {
+        val job = GlobalScope.launch {
+            onStart()
+
+            for (elem in producer) {
+                elem ?: throw IllegalStateException("Polled element cannot be null!")
                 val (path, data) = elem.future.await()
 
                 DebugLog.log("FilePreloader.Processor", "[P${elem.priority}] Loading from $path: $data")
@@ -65,19 +70,24 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
                 list.add(data)
             }
 
-            isWorking.set(false)
+            onEnd()
+        }
+
+        ranCoroutines.add(job)
+
+        job.invokeOnCompletion {
+            ranCoroutines.remove(job)
         }
     }
 
-    internal suspend fun add(element: PreloadableUnit<D>) {
-        preloadPriorityQueue.add(element)
-    }
+    internal fun clear() {
+        GlobalScope.launch {
+            ranCoroutines.forEach {
+                it.cancelAndJoin()
+            }
 
-    /**
-     * Clear everything, all data loaded will be discarded.
-     */
-    internal suspend fun clear() {
-        preloadPriorityQueue.clear()
+            ranCoroutines.clear()
+        }
     }
 
 }
