@@ -102,7 +102,7 @@ internal class Loader<D: DataContainer>(private val clazz: Class<D>) {
      * on each file (represented by its path) inside the folder.
      */
     internal fun loadFolder(unit: ProcessUnit<D>) {
-        GlobalScope.launch {
+        GlobalScope.launch(LIB_CONTEXT) {
             val file = KFile(unit.path)
             val fileList = file.list() ?: arrayOf()
 

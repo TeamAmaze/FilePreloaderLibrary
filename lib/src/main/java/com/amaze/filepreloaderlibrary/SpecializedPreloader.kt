@@ -6,6 +6,7 @@ import com.amaze.filepreloaderlibrary.datastructures.DataContainer
 import com.amaze.filepreloaderlibrary.datastructures.FetcherFunction
 import com.amaze.filepreloaderlibrary.utils.DIVIDER
 import com.amaze.filepreloaderlibrary.utils.KFile
+import com.amaze.filepreloaderlibrary.utils.LIB_CONTEXT
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -35,7 +36,7 @@ class SpecializedPreloader<out D: DataContainer>(private val clazz: Class<D>,
      * Get the loaded data. [getList] will run on UI thread.
      */
     fun load(activity: Activity, path: String, getList: (List<D>) -> Unit) {
-        GlobalScope.launch {
+        GlobalScope.launch(LIB_CONTEXT) {
             val t: Pair<Boolean, List<DataContainer>>? = loader.getLoaded(path)
 
             if (t != null) {

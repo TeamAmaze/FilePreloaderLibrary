@@ -56,7 +56,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     private fun work(producer: ReceiveChannel<PreloadableUnit<D>?>, onStart: suspend () -> Unit, onEnd: suspend () -> Unit  = {}) {
-        val job = GlobalScope.launch {
+        val job = GlobalScope.launch(LIB_CONTEXT) {
             onStart()
 
             for (elem in producer) {
@@ -81,7 +81,7 @@ internal class Processor<D: DataContainer>(private val clazz: Class<D>) {
     }
 
     internal fun clear() {
-        GlobalScope.launch {
+        GlobalScope.launch(LIB_CONTEXT) {
             ranCoroutines.forEach {
                 it.cancelAndJoin()
             }
