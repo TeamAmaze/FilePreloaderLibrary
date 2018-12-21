@@ -59,11 +59,11 @@ class FileMetadata(path: String): DataContainer(path) {
 private static final FilePreloader FILE_PRELOADER = FilePreloader.INSTANCE;
 
 public void preload(File externalDir) {
-    FILE_PRELOADER.with(FileMetadata.class, FileMetadata::new).preloadFrom(externalDir.getAbsolutePath());
+    FILE_PRELOADER.with(FileMetadata.class).preloadFrom(externalDir.getAbsolutePath());
 }
 
 public void load(File externalDir) {
-    FILE_PRELOADER.with(FileMetadata.class, FileMetadata::new).load(externalDir.getAbsolutePath(), (fileMetadatas) -> {
+    FILE_PRELOADER.with(FileMetadata.class).load(externalDir.getAbsolutePath(), (fileMetadatas) -> {
         show(fileMetadatas); //Do something with the data
     });
 }
