@@ -29,7 +29,7 @@ dependencies {
 fun preload(externalDir: File) =
         FilePreloader.with(::FileMetadata).preloadFrom(externalDir.absolutePath)
 
-fun load() = FilePreloader.with(::FileMetadata).loadFrom(externalDir.absolutePath) {
+fun load() = FilePreloader.with(::FileMetadata).load(externalDir.absolutePath) {
             //Do something with the data
             show(it) //it: List<FileMetadata>
         }
