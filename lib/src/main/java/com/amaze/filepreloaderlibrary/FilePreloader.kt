@@ -1,6 +1,7 @@
 package com.amaze.filepreloaderlibrary
 
 import android.app.Activity
+import com.amaze.filepreloaderlibrary.FilePreloader.with
 import com.amaze.filepreloaderlibrary.datastructures.DataContainer
 import com.amaze.filepreloaderlibrary.datastructures.FetcherFunction
 import com.amaze.filepreloaderlibrary.utils.LIB_CONTEXT
@@ -36,6 +37,20 @@ object FilePreloader {
 
     /**
      * For compatibity with Java
+     *
+     * @see [with].
+     */
+    fun <D: DataContainer>with(clazz: Class<D>): SpecializedPreloader<D> {
+        //A constructor will obviously produce an instance of the type-parametrized type
+        // from which the constructor has been obtained
+        @Suppress("UNCHECKED_CAST")
+        return with(clazz, clazz.getConstructor(String::class.java)::newInstance as (String) -> D)
+    }
+
+    /**
+     * For compatibity with Java
+     *
+     * If you want to use another method, that's not the constructor, the type still has to be (String) -> D
      *
      * @see [with].
      */
