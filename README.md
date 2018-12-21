@@ -24,6 +24,7 @@ dependencies {
 
 ## Usage
 
+### Kotlin:
 ```kotlin
 fun preload(externalDir: File) =
         FilePreloader.with(::FileMetadata).preloadFrom(externalDir.absolutePath)
@@ -49,6 +50,43 @@ class FileMetadata(path: String): DataContainer(path) {
 
     override fun toString(): String {
         return "'$name': {'$filePath', $isDirectory, *.$extension}"
+    }
+}
+```
+
+### Java:
+```java
+private static final FilePreloader FILE_PRELOADER = FilePreloader.INSTANCE;
+
+public void preload(File externalDir) {
+    FILE_PRELOADER.with(FileMetadata.class, FileMetadata::new).preloadFrom(externalDir.getAbsolutePath());
+}
+
+public void load(File externalDir) {
+    FILE_PRELOADER.with(FileMetadata.class, FileMetadata::new).load(externalDir.getAbsolutePath(), (fileMetadatas) -> {
+        show(fileMetadatas); //Do something with the data
+    });
+}
+
+private static class FileMetadata extends DataContainer {
+    private final String name;
+    private final String filePath;
+    private final String extension;
+    private final boolean isDirectory;
+
+
+    public FileMetadata(@NonNull String path){
+        super(path);
+        File file = new File(path);
+        name = file.getName();
+        filePath = file.getAbsolutePath();
+        extension = name.substring(name.lastIndexOf('.'));
+        isDirectory = file.isDirectory();
+    }
+
+    @Override
+    public String toString() {
+        return "'" + name + "': {'" + filePath + "', " + isDirectory + ", *." + extension + "}";
     }
 }
 ```
