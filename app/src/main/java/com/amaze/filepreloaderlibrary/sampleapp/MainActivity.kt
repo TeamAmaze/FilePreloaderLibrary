@@ -8,10 +8,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
+import android.widget.*
 import com.amaze.filepreloaderlibrary.FilePreloader
-import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.IOException
 
@@ -32,9 +30,11 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
         FilePreloader.DEBUG = true
 
+        val fileList = findViewById<ListView>(R.id.filelist)
+
         adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mutableListOf())
-        filelist.adapter = adapter
-        filelist.onItemClickListener = this
+        fileList.adapter = adapter
+        fileList.onItemClickListener = this
         loadFolder(getStartingFile().absolutePath)
     }
 
@@ -72,6 +72,7 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
             adapter.addAll(fileList)
 
+            val timeView = findViewById<TextView>(R.id.timeView)
             timeView.text = "${timeDelta}ms\n---- FILES IN ${externalDir.absolutePath} (${it.size}) ----"
         }
     }
@@ -104,11 +105,14 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
             val a: List<String>? = it?.map { it.toString() }
             if(a != null) adapter.addAll(a)
 
+            val timeView = findViewById<TextView>(R.id.timeView)
             timeView.text = "${timeDelta}ms\n------ FILES DUMP FOR ${currentPath} ------"
         }
     }
 
     fun onReadButtonClick(v: View) {
+        val loadedButton = findViewById<Button>(R.id.loadedButton)
+
         if(!showingLoaded) {
             dump()
             loadedButton.text = "HIDE LOADED"
@@ -123,6 +127,7 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
     fun onCleanUpClick(v: View) {
         FilePreloader.cleanUp()
         if(showingLoaded) adapter?.clear()
+        val timeView = findViewById<TextView>(R.id.timeView)
         timeView.text = ""
     }
 
