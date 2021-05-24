@@ -3,11 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/FilePreloaderLibrary.iml" filepath="$PROJECT_DIR$/.idea/FilePreloaderLibrary.iml" />
-      <module fileurl="file:///media/emmanuel/26dc5b51-6410-481a-965e-5451b38e9d8f/home/emmanuel/Documentos/GitHub/FilePreloaderLibrary/app/FilePreloaderLibrary-app.iml" filepath="/media/emmanuel/26dc5b51-6410-481a-965e-5451b38e9d8f/home/emmanuel/Documentos/GitHub/FilePreloaderLibrary/app/FilePreloaderLibrary-app.iml" />
-      <module fileurl="file:///media/emmanuel/26dc5b51-6410-481a-965e-5451b38e9d8f/home/emmanuel/Documentos/GitHub/FilePreloaderLibrary/lib/FilePreloaderLibrary-lib.iml" filepath="/media/emmanuel/26dc5b51-6410-481a-965e-5451b38e9d8f/home/emmanuel/Documentos/GitHub/FilePreloaderLibrary/lib/FilePreloaderLibrary-lib.iml" />
-      <module fileurl="file:///media/emmanuel/26dc5b51-6410-481a-965e-5451b38e9d8f/home/emmanuel/Documentos/GitHub/FilePreloaderLibrary/GitHub-FilePreloaderLibrary.iml" filepath="/media/emmanuel/26dc5b51-6410-481a-965e-5451b38e9d8f/home/emmanuel/Documentos/GitHub/FilePreloaderLibrary/GitHub-FilePreloaderLibrary.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/lib/lib.iml" filepath="$PROJECT_DIR$/lib/lib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FilePreloaderLibrary.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FilePreloaderLibrary.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/lib/FilePreloaderLibrary.lib.iml" filepath="$PROJECT_DIR$/.idea/modules/lib/FilePreloaderLibrary.lib.iml" />
     </modules>
   </component>
 </project>
